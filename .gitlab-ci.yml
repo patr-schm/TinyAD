@@ -1,0 +1,355 @@
+variables:
+  LINUX_GTEST_ROOT: "~/sw/gtest-1.10.0"
+  APPLE_CMAKE: "/opt/local/bin/cmake"
+  APPLE_GTEST_ROOT: "~/sw/gtest-1.7.0/"
+  WINDOWS_EIGEN3_DIR: "e:\\libs\\general\\Eigen3.3.9\\share\\eigen3\\cmake"
+  VS2017_GTEST_ROOT: "e:\\libs\\VS2017\\x64\\gtest-1.7.0"
+  VS2017_GENERATOR: "Visual Studio 15 Win64"
+  VS2019_GTEST_ROOT: "e:\\libs\\VS2019\\x64\\gtest-1.10.0"
+  VS2019_GENERATOR: "Visual Studio 16 2019"
+
+stages:
+  - build
+  - test
+
+# #####################################
+# Linux Debug
+# #####################################
+
+build-linux-debug:
+  stage: build
+  tags:
+    - Linux
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - cmake -DGTEST_ROOT=$LINUX_GTEST_ROOT -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC" ..
+    - make -j $(nproc)
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-linux-debug:
+  stage: test
+  tags:
+    - Linux
+  dependencies: [build-linux-debug]
+  needs: [build-linux-debug]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# Linux Release
+# #####################################
+
+build-linux-release:
+  stage: build
+  tags:
+    - Linux
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - cmake -DGTEST_ROOT=$LINUX_GTEST_ROOT -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Release ..
+    - make -j $(nproc)
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-linux-release:
+  stage: test
+  tags:
+    - Linux
+  dependencies: [build-linux-release]
+  needs: [build-linux-release]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# Apple Debug
+# #####################################
+
+build-apple-debug:
+  stage: build
+  tags:
+    - Apple
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - $APPLE_CMAKE -DGTEST_ROOT=$APPLE_GTEST_ROOT -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Debug ..
+    - make -j4
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-apple-debug:
+  stage: test
+  tags:
+    - Apple
+  dependencies: [build-apple-debug]
+  needs: [build-apple-debug]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# Apple Release
+# #####################################
+
+build-apple-release:
+  stage: build
+  tags:
+    - Apple
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - $APPLE_CMAKE -DGTEST_ROOT=$APPLE_GTEST_ROOT -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Release ..
+    - make -j4
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-apple-release:
+  stage: test
+  tags:
+    - Apple
+  dependencies: [build-apple-release]
+  needs: [build-apple-release]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# Apple M1 Debug
+# #####################################
+
+build-apple-m1-debug:
+  stage: build
+  tags:
+    - AppleM1
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - cmake -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Debug ..
+    - make -j4
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-apple-m1-debug:
+  stage: test
+  tags:
+    - AppleM1
+  dependencies: [build-apple-m1-debug]
+  needs: [build-apple-m1-debug]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# Apple M1 Release
+# #####################################
+
+build-apple-m1-release:
+  stage: build
+  tags:
+    - AppleM1
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - cmake -DTINYAD_UNIT_TESTS=ON -DCMAKE_BUILD_TYPE=Release ..
+    - make -j4
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-apple-m1-release:
+  stage: test
+  tags:
+    - AppleM1
+  dependencies: [build-apple-m1-release]
+  needs: [build-apple-m1-release]
+  script:
+    - cd build
+    - ./TinyAD-Tests --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/report.xml
+
+# #####################################
+# VS2017 Debug
+# #####################################
+
+build-VS2017-debug:
+  stage: build
+  tags:
+    - VS2017
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2017_GENERATOR" -DCMAKE_CXX_FLAGS="/bigobj" -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2017_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2017\Professional\Common7\IDE\devenv.com /Build "Debug" TinyAD.sln /Project "ALL_BUILD"
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-VS2017-debug:
+  stage: test
+  tags:
+    - VS2017
+  dependencies: [build-VS2017-debug]
+  needs: [build-VS2017-debug]
+  script:
+    - cd "build\Debug"
+    - .\TinyAD-Tests.exe --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/Debug/report.xml
+
+# #####################################
+# VS2017 Release
+# #####################################
+
+build-VS2017-release:
+  stage: build
+  tags:
+    - VS2017
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2017_GENERATOR" -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2017_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2017\Professional\Common7\IDE\devenv.com /Build "Release" TinyAD.sln /Project "ALL_BUILD"
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-VS2017-release:
+  stage: test
+  tags:
+    - VS2017
+  dependencies: [build-VS2017-release]
+  needs: [build-VS2017-release]
+  script:
+    - cd "build\Release"
+    - .\TinyAD-Tests.exe --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/Release/report.xml
+
+# #####################################
+# VS2019 Debug
+# #####################################
+
+build-VS2019-debug:
+  stage: build
+  tags:
+    - VS2019
+    - Qt5141 # Workaround to avoid runner "bajer" which doesn't have gtest in the expected folder.
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2019_GENERATOR" -DCMAKE_CXX_FLAGS="/bigobj" -DCMAKE_GENERATOR_PLATFORM=x64 -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2019_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2019\Professional\Common7\IDE\devenv.com /Build "Debug" TinyAD.sln /Project "ALL_BUILD"
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-VS2019-debug:
+  stage: test
+  tags:
+    - VS2019
+  dependencies: [build-VS2019-debug]
+  needs: [build-VS2019-debug]
+  script:
+    - cd "build\Debug"
+    - .\TinyAD-Tests.exe --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/Debug/report.xml
+
+# #####################################
+# VS2019 Release
+# #####################################
+
+build-VS2019-release:
+  stage: build
+  tags:
+    - VS2019
+    - Qt5141 # Workaround to avoid runner "bajer" which doesn't have gtest in the expected folder.
+  script:
+    - echo "Hello, $GITLAB_USER_LOGIN!"
+    - echo "On branch $CI_COMMIT_BRANCH!"
+    - mkdir build
+    - cd build
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2019_GENERATOR" -DCMAKE_GENERATOR_PLATFORM=x64 -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2019_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2019\Professional\Common7\IDE\devenv.com /Build "Release" TinyAD.sln /Project "ALL_BUILD"
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 hour
+
+test-VS2019-release:
+  stage: test
+  tags:
+    - VS2019
+  dependencies: [build-VS2019-release]
+  needs: [build-VS2019-release]
+  script:
+    - cd "build\Release"
+    - .\TinyAD-Tests.exe --gtest_output="xml:report.xml"
+  artifacts:
+    when: always
+    reports:
+      junit: build/Release/report.xml
