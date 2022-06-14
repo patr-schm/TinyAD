@@ -65,7 +65,7 @@ auto [f, g, H_proj] = func.eval_with_hessian_proj(x);
 Handle types from multiple mesh data structures are supported, e.g., OpenMesh, polymesh, geometry-central, or libigl-style matrices. Support for new types can be added by overloading a single function (see [`TinyAD/Support/Common.hh`](include/TinyAD/Support/Common.hh)).
 
 # Examples
-To get started, take a look at one of our [TinyAD-Examples](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples).
+To get started, take a look at one of our [TinyAD-Examples](https://github.com/patr-schm/TinyAD-Examples).
 We implement objective functions and basic solvers for typical geometry processing tasks using various mesh libraries.
 
 ## Surface Mesh Parametrization
@@ -75,17 +75,17 @@ We compute a piecewise linear map from a disk-topology triangle mesh to the plan
 This can be the basis to experiment with more specialized algorithms or more complex objective functions.
 We provide examples using different mesh representations:
 
-[`parametrization_openmesh.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/parametrization_openmesh.cc)  
-[`parametrization_polymesh.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/parametrization_polymesh.cc)  
-[`parametrization_geometrycentral.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/parametrization_geometrycentral.cc)  
-[`parametrization_libigl.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/parametrization_libigl.cc)
+[`parametrization_openmesh.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/parametrization_openmesh.cc)  
+[`parametrization_polymesh.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/parametrization_polymesh.cc)  
+[`parametrization_geometrycentral.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/parametrization_geometrycentral.cc)  
+[`parametrization_libigl.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/parametrization_libigl.cc)
 
 ## Volume Mesh Deformation
 ![](img/deformation_thumbnail.png)
 
 In this example, we compute a 3D deformation of a tetrahedral mesh by optimizing different distortion energies subject to position constraints:
 
-[`deformation.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/deformation.cc)
+[`deformation.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/deformation.cc)
 
 ## Frame Field Optimization
 ![](img/polycurl_reduction_thumbnail.png)
@@ -93,14 +93,14 @@ In this example, we compute a 3D deformation of a tetrahedral mesh by optimizing
 Here, we show how to re-implement the non-linear frame field optimization algorithm presented in [Integrable PolyVector Fields [Diamanti et al. 2015]](https://igl.ethz.ch/projects/integrable/), using very little code.
 Given an input frame field (two tangent vectors per triangle), the algorithm optimizes an objective based on complex polynomials via a Gauss-Newton method:
 
-[`polycurl_reduction.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/polycurl_reduction.cc)
+[`polycurl_reduction.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/polycurl_reduction.cc)
 
 ## Manifold Optimization
 ![](img/manifold_thumbnail.png)
 
 We optimize a map from a genus 0 surface to the sphere using a technique from manifold optimization. Vertex trajectories on the sphere are parametrized via tangent vectors and a retraction operator:
 
-[`manifold_optimization.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/manifold_optimization.cc)
+[`manifold_optimization.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/manifold_optimization.cc)
 
 ## Quad Mesh Planarization
 ![](img/quad_planarization_thumbnail.png)
@@ -108,7 +108,7 @@ We optimize a map from a genus 0 surface to the sphere using a technique from ma
 In this example, we optimize the 3D vertex positions of a quad mesh for face planarity.
 We implement one of the objective terms from [Geometric Modeling with Conical Meshes and Developable Surfaces [Liu 2006]](http://www.geometrie.tugraz.at/wallner/quad06.pdf):
 
-[`quad_planarization.cc`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples/-/blob/main/apps/quad_planarization.cc)
+[`quad_planarization.cc`](https://github.com/patr-schm/TinyAD-Examples/blob/main/apps/quad_planarization.cc)
 
 
 # Advanced Usage and Common Pitfalls
@@ -122,7 +122,7 @@ We implement one of the objective terms from [Geometric Modeling with Conical Me
 * Note that calls to math functions involving TinyAD types are only legal if the derivatives exist and are finite for the given function argument. E.g. it is illegal to call `acos(x)` with `x==1.0` since the derivative of acos is unbounded at 1.0.
 
 # Unit Tests
-When you contribute to TinyAD, please run (and extend) the unit tests located in [`TinyAD/tests`](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD/-/tree/main/tests).
+When you contribute to TinyAD, please run (and extend) the unit tests located in [`TinyAD/tests`](https://github.com/patr-schm/TinyAD/tree/main/tests).
 
 With [googletest](https://github.com/google/googletest) installed on your system, build the unit tests via:
 ```
@@ -132,7 +132,7 @@ cmake -DGTEST_ROOT=~/path/to/gtest-1.10.0 -DTINYAD_UNIT_TESTS=ON ..
 make -j4
 ```
 
-Alternatively, build our [TinyAD-Examples](https://gitlab.vci.rwth-aachen.de:9000/pschmidt/TinyAD-Examples) project, which clones googletest as a submodule.
+Alternatively, build our [TinyAD-Examples](https://github.com/patr-schm/TinyAD-Examples) project, which clones googletest as a submodule.
 
 # Authors
 
