@@ -148,7 +148,7 @@ We thank all test users and contributors. In particular: Alexandra Heuschling, A
 If you use TinyAD in your academic work, please cite our paper:
 ```
 @article{schmidt2022tinyad,
-  title={TinyAD: Automatic Differentiation in Geometry Processing Made Simple},
+  title={{TinyAD}: Automatic Differentiation in Geometry Processing Made Simple},
   author={Schmidt, Patrick and Born, Janis and Bommes, David and Campen, Marcel and Kobbelt, Leif},
   year={2022},
   journal={Computer Graphics Forum},
@@ -160,4 +160,3 @@ If you use TinyAD in your academic work, please cite our paper:
 
 # License
 TinyAD is released under the MIT license.
-
