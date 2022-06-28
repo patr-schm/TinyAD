@@ -2,7 +2,7 @@
 
 # TinyAD
 
-TinyAD is a **C++ header-only** library for **second-order automatic differentiation**. Small dense problems are differentiated in forward mode, which allows unrestricted looping and branching. An interface for per-element functions allows convenient differentiation of large sparse problems, which are typical in geometry processing on meshes. For more details see our [paper](tba).
+TinyAD is a **C++ header-only** library for **second-order automatic differentiation**. Small dense problems are differentiated in forward mode, which allows unrestricted looping and branching. An interface for per-element functions allows convenient differentiation of large sparse problems, which are typical in geometry processing on meshes. For more details see our [paper](https://graphics.rwth-aachen.de/media/papers/341/TinyAD.pdf).
 
 # Integration
 TinyAD has been tested on Linux, Mac, and Windows (VS >= 2017). It only requires:
