@@ -145,9 +145,19 @@ Alternatively, build our [TinyAD-Examples](https://gitlab.vci.rwth-aachen.de:900
 We thank all test users and contributors. In particular: Alexandra Heuschling, Anton Florey, Dörte Pieper, Joe Jakobi, and Philipp Domagalski.
 
 # Cite TinyAD
-TODO
+If you use TinyAD in your academic work, please cite our paper:
+```
+@article{schmidt2022tinyad,
+  title={TinyAD: Automatic Differentiation in Geometry Processing Made Simple},
+  author={Schmidt, Patrick and Born, Janis and Bommes, David and Campen, Marcel and Kobbelt, Leif},
+  year={2022},
+  journal={Computer Graphics Forum},
+  volume={41},
+  number={5},
+}
+```
 
 
 # License
-TinyAD is released under MIT license.
+TinyAD is released under the MIT license.
 
