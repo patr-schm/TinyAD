@@ -25,7 +25,7 @@ namespace TinyAD
  *    auto func = TinyAD::scalar_function<2>(variable_handles);
  *
  * Or alternatively:
- *    auto func = TinyAD::scalar_function<2>(TinyAD::range(4)); // Initializes handles 0, 1, 3, 4
+ *    auto func = TinyAD::scalar_function<2>(TinyAD::range(4)); // Initializes handles 0, 1, 2, 3
  */
 inline Eigen::Index idx_from_handle(Eigen::Index _idx)
 {
