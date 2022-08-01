@@ -8,9 +8,9 @@
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    inkscape:version="1.0.2 (e86c870879, 2021-01-15)"
-   inkscape:export-ydpi="61.927616"
-   inkscape:export-xdpi="61.927616"
-   inkscape:export-filename="tinyad_square.png"
+   inkscape:export-ydpi="30.963808"
+   inkscape:export-xdpi="30.963808"
+   inkscape:export-filename="tinyad_square_256.png"
    sodipodi:docname="tinyad_square.svg"
    id="svg8"
    version="1.1"
@@ -27,17 +27,17 @@
      inkscape:bbox-nodes="true"
      inkscape:snap-bbox-midpoints="true"
      inkscape:snap-bbox="true"
-     inkscape:window-maximized="0"
+     inkscape:window-maximized="1"
      inkscape:window-y="0"
-     inkscape:window-x="1280"
-     inkscape:window-height="1363"
-     inkscape:window-width="1280"
+     inkscape:window-x="0"
+     inkscape:window-height="1369"
+     inkscape:window-width="2560"
      showgrid="false"
      inkscape:document-rotation="0"
      inkscape:current-layer="g3415"
      inkscape:document-units="mm"
-     inkscape:cy="383.17928"
-     inkscape:cx="404.94462"
+     inkscape:cy="306.938"
+     inkscape:cx="654.22231"
      inkscape:zoom="0.7"
      inkscape:pageshadow="2"
      inkscape:pageopacity="1"
@@ -57,7 +57,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
