@@ -98,6 +98,15 @@ struct Element
             const VariableHandleT& _vh);
 
     /**
+     * Access the scalar variables associated with a variable handle
+     * (e.g. a 2D vector in planar mesh parametrization).
+     * It is not logged internaly which element accesses which variables.
+     * This does not modify the local-to-global index map.
+     */
+    VariableVectorType variables_passive(
+            const VariableHandleT& _vh) const;
+
+    /**
      * Access to the element handle
      * (e.g. a triangle in mesh parametrization).
      */
@@ -242,6 +251,21 @@ variable(
 {
     static_assert (variable_dimension == 1, "element.variable(vh) is only available if variable dimension is 1. Use element.variables(vh) instead.");
     return variables(_vh)[0];
+}
+
+template <int variable_dimension, int element_valence, int outputs_per_element, typename PassiveT, typename ScalarT, typename VariableHandleT, typename ElementHandleT, bool active_mode>
+auto
+Element<variable_dimension, element_valence, outputs_per_element, PassiveT, ScalarT, VariableHandleT, ElementHandleT, active_mode>::
+variables_passive(
+        const VariableHandleT& _vh) const -> Element::VariableVectorType
+{
+    // Variables associated with handle vh occupy a segment (of length variable_dimension) in x.
+    // Get the start index of this segment.
+    const Eigen::Index idx_global_start = global_idx<variable_dimension>(_vh, 0, x->size());
+    TINYAD_ASSERT_LEQ(idx_global_start + variable_dimension, x->size());
+
+    // Passive mode: Just return segment of x vector.
+    return x->segment(idx_global_start, variable_dimension);
 }
 
 /**
