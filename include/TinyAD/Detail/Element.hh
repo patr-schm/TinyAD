@@ -51,6 +51,13 @@ struct Element
     using VariableVectorType = Eigen::Vector<ScalarType, variable_dimension>;
 
     /**
+     * Each variable handle is associated with a fixed number of scalar values
+     * (e.g. 2 in planar mesh parametrization).
+     * This is their passive vector type, e.g., Eigen::Vector2d.
+     */
+    using PassiveVectorType = Eigen::Vector<PassiveT, variable_dimension>;
+
+    /**
      * In a TinyAD::VectorFunction, each element returns several
      * residuals wrapped in a vector of this type.
      * Entries of this vector can be either active (TinyAD::Scalar) or passive (e.g. double).
@@ -103,7 +110,17 @@ struct Element
      * It is not logged internaly which element accesses which variables.
      * This does not modify the local-to-global index map.
      */
-    VariableVectorType variables_passive(
+    PassiveVectorType variables_passive(
+            const VariableHandleT& _vh) const;
+
+    /**
+     * Access the scalar variable associated with a variable handle.
+     * This function is only available if the variable dimension is 1,
+     * i.e. if there is exactly one variable per handle.
+     * Otherwise use element.variables_passive() instead.
+     * This does not modify the local-to-global index map.
+     */
+    PassiveT variable_passive(
             const VariableHandleT& _vh) const;
 
     /**
@@ -257,7 +274,7 @@ template <int variable_dimension, int element_valence, int outputs_per_element, 
 auto
 Element<variable_dimension, element_valence, outputs_per_element, PassiveT, ScalarT, VariableHandleT, ElementHandleT, active_mode>::
 variables_passive(
-        const VariableHandleT& _vh) const -> Element::VariableVectorType
+        const VariableHandleT& _vh) const -> Element::PassiveVectorType
 {
     // Variables associated with handle vh occupy a segment (of length variable_dimension) in x.
     // Get the start index of this segment.
@@ -266,6 +283,16 @@ variables_passive(
 
     // Passive mode: Just return segment of x vector.
     return x->segment(idx_global_start, variable_dimension);
+}
+
+template <int variable_dimension, int element_valence, int outputs_per_element, typename PassiveT, typename ScalarT, typename VariableHandleT, typename ElementHandleT, bool active_mode>
+auto
+Element<variable_dimension, element_valence, outputs_per_element, PassiveT, ScalarT, VariableHandleT, ElementHandleT, active_mode>::
+variable_passive(
+        const VariableHandleT& _vh) const -> PassiveT
+{
+    static_assert (variable_dimension == 1, "element.variable_passive(vh) is only available if variable dimension is 1. Use element.variables_passive(vh) instead.");
+    return variables_passive(_vh)[0];
 }
 
 /**
