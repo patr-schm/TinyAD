@@ -30,10 +30,11 @@ TEST(ElementTest, VariablesPassive)
     sf.add_elements<1>(TinyAD::range(1), [] (auto& element)
     {
         using T = TINYAD_SCALAR_TYPE(element);
-        Eigen::Vector<T,1> a = element.variables_passive(1);
-        Eigen::Vector<T,1> b = element.variables_passive(1);
-        Eigen::Vector<T,1> c = element.variables_passive(1);
-        return element.variable(0);
+        const Eigen::Vector<double, 1> a = element.variables_passive(0);
+        const Eigen::Vector<double, 1> b = element.variables_passive(1);
+        const double c = element.variable_passive(0);
+        const double d = element.variable_passive(1);
+        return element.variable(0) + a.norm() + b.norm() + c + d;
     });
     sf.eval(Eigen::Vector2d::Zero());
     sf.eval_with_derivatives(Eigen::Vector2d::Zero());
@@ -42,12 +43,12 @@ TEST(ElementTest, VariablesPassive)
     vf.add_elements<1, 1>(TinyAD::range(1), [] (auto& element)
     {
         using T = TINYAD_SCALAR_TYPE(element);
-        Eigen::Vector<T,1> a = element.variables_passive(1);
-        Eigen::Vector<T,1> b = element.variables_passive(1);
-        Eigen::Vector<T,1> c = element.variables_passive(1);
-        return Eigen::Vector<T,1> (element.variable(0));
+        const Eigen::Vector<double, 1> a = element.variables_passive(0);
+        const Eigen::Vector<double, 1> b = element.variables_passive(1);
+        const double c = element.variable_passive(0);
+        const double d = element.variable_passive(1);
+        return Eigen::Vector<T,1> (element.variable(0) + a.norm() + b.norm() + c + d);
     });
     vf.eval(Eigen::Vector2d::Zero());
     vf.eval_with_jacobian(Eigen::Vector2d::Zero());
-
 }
