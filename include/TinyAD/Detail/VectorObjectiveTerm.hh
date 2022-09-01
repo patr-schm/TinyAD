@@ -86,8 +86,6 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
           element_handles(_element_handles),
           settings(_settings)
     {
-        TINYAD_ASSERT_G(element_handles.size(), 0);
-
         static_assert (std::is_same_v<
                 std::decay_t<decltype((_eval_element(std::declval<PassiveElementType&>())))>,
                 PassiveEvalElementReturnType>,
