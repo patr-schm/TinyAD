@@ -146,7 +146,11 @@ eval(
 
     PassiveT f = 0.0;
     for (auto& objective : objective_terms)
+    {
+        if (f == INFINITY)
+            return INFINITY;
         f += objective->eval(_x);
+    }
 
     return f;
 }
