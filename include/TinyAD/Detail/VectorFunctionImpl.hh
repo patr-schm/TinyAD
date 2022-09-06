@@ -225,7 +225,7 @@ eval_with_derivatives(
     TINYAD_ASSERT_EQ(_J.rows(), n_outputs);
     TINYAD_ASSERT_EQ(H_triplets.size(), n_outputs);
     _H.resize(n_outputs);
-    for (int i_output = 0; i_output < n_outputs; ++i_output)
+    for (Eigen::Index i_output = 0; i_output < n_outputs; ++i_output)
     {
         _H[i_output] = Eigen::SparseMatrix<PassiveT>(this->n_vars, this->n_vars);
         _H[i_output].setFromTriplets(H_triplets[i_output].begin(), H_triplets[i_output].end());

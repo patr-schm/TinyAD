@@ -182,7 +182,7 @@ bool variable_indices_compact(
     {
         const Eigen::Index idx = idx_from_handle(v);
 
-        if (idx >= _variable_handles.size())
+        if (idx >= (Eigen::Index)_variable_handles.size())
             return false; // Index not in 0..n-1
         if (idx_used[idx])
             return false; // Index occurred twice
@@ -220,7 +220,7 @@ variables(
 
     // First, check if this variable handle is already part of the index map (linear search).
     Eigen::Index idx_local_start = -1;
-    for (Eigen::Index i = 0; i < idx_local_to_global.size(); ++i)
+    for (Eigen::Index i = 0; i < (Eigen::Index)idx_local_to_global.size(); ++i)
     {
         if (idx_local_to_global[i] == idx_global_start)
         {
@@ -233,7 +233,6 @@ variables(
     // If not already present, add all variables associated with this handle to the index map.
     if (idx_local_start == -1)
     {
-        TINYAD_ASSERT_GEQ(idx_local_to_global.size(), 0);
         TINYAD_ASSERT_EQ(idx_local_to_global.size() % variable_dimension, 0);
         if (idx_local_to_global.size() >= n_element)
             TINYAD_ERROR_throw("Too many variables requested via element.variables(...).");
