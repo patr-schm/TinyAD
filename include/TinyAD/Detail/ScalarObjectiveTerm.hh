@@ -103,7 +103,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         std::vector<PassiveT> element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             // Call user code
             PassiveElementType element(element_handles[i_element], _x);
@@ -112,7 +112,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
 
         // Sum up results
         PassiveT f = 0.0;
-        for (Eigen::Index i_element = 0; i_element < element_results.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_results.size(); ++i_element)
             f += element_results[i_element];
 
         return f;
@@ -131,7 +131,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         std::vector<ActiveFirstOrderScalarType> element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (int i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
@@ -142,12 +142,12 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         }
 
         // Add to global f, g and H
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             _f += element_results[i_element].val;
 
             // Add to global gradient
-            for (Eigen::Index i = 0; i < elements[i_element].idx_local_to_global.size(); ++i)
+            for (Eigen::Index i = 0; i < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++i)
                 _g[elements[i_element].idx_local_to_global[i]] += element_results[i_element].grad[i];
         }
     }
@@ -168,7 +168,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         std::vector<ActiveSecondOrderScalarType> element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (int i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
@@ -183,18 +183,18 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         }
 
         // Add to global f, g and H
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             _f += element_results[i_element].val;
 
             // Add to global gradient
-            for (Eigen::Index i = 0; i < elements[i_element].idx_local_to_global.size(); ++i)
+            for (Eigen::Index i = 0; i < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++i)
                 _g[elements[i_element].idx_local_to_global[i]] += element_results[i_element].grad[i];
 
             // Add to global Hessian
-            for (Eigen::Index i = 0; i < elements[i_element].idx_local_to_global.size(); ++i)
+            for (Eigen::Index i = 0; i < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++i)
             {
-                for (Eigen::Index j = 0; j < elements[i_element].idx_local_to_global.size(); ++j)
+                for (Eigen::Index j = 0; j < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++j)
                 {
                     _H_triplets.push_back(Eigen::Triplet<PassiveT>(
                                elements[i_element].idx_local_to_global[i],
