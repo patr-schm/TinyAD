@@ -1319,6 +1319,13 @@ void test_comparison()
     ASSERT_FALSE(a >= 2.0);
 }
 
+TEST(ScalarTest, ComparisonFloatFirstOrder) { test_comparison<float, false>(); }
+TEST(ScalarTest, ComparisonDoubleFirstOrder) { test_comparison<double, false>(); }
+TEST(ScalarTest, ComparisonLongDoubleFirstOrder) { test_comparison<long double, false>(); }
+TEST(ScalarTest, ComparisonFloatSecondOrder) { test_comparison<float, true>(); }
+TEST(ScalarTest, ComparisonDoubleSecondOrder) { test_comparison<double, true>(); }
+TEST(ScalarTest, ComparisonLongDoubleSecondOrder) { test_comparison<long double, true>(); }
+
 template <typename PassiveT>
 void test_min_max()
 {
@@ -1347,7 +1354,7 @@ TEST(ScalarTest, MinMaxDouble) { test_min_max<double>(); }
 TEST(ScalarTest, MinMaxLongDouble) { test_min_max<long double>(); }
 
 template <typename PassiveT>
-void test_min_max()
+void test_clamp()
 {
     TinyAD::Scalar<1, PassiveT, with_hessian> x(4.0, 3.0, 2.0);
 
@@ -1364,16 +1371,9 @@ void test_min_max()
     ASSERT_EQ(clamp(x, 5.0, 10.0).Hess(0, 0), 0.0);
 }
 
-TEST(ScalarTest, MinMaxFloat) { test_min_max<float>(); }
-TEST(ScalarTest, MinMaxDouble) { test_min_max<double>(); }
-TEST(ScalarTest, MinMaxLongDouble) { test_min_max<long double>(); }
-
-TEST(ScalarTest, ComparisonFloatFirstOrder) { test_comparison<float, false>(); }
-TEST(ScalarTest, ComparisonDoubleFirstOrder) { test_comparison<double, false>(); }
-TEST(ScalarTest, ComparisonLongDoubleFirstOrder) { test_comparison<long double, false>(); }
-TEST(ScalarTest, ComparisonFloatSecondOrder) { test_comparison<float, true>(); }
-TEST(ScalarTest, ComparisonDoubleSecondOrder) { test_comparison<double, true>(); }
-TEST(ScalarTest, ComparisonLongDoubleSecondOrder) { test_comparison<long double, true>(); }
+TEST(ScalarTest, MinMaxFloat) { test_clamp<float>(); }
+TEST(ScalarTest, MinMaxDouble) { test_clamp<double>(); }
+TEST(ScalarTest, MinMaxLongDouble) { test_clamp<long double>(); }
 
 template <typename PassiveT, bool with_hessian>
 void test_sphere()
