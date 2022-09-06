@@ -229,6 +229,32 @@ struct Scalar
                     a);
     }
 
+    friend Scalar log2(
+            const Scalar& a)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        const PassiveT a_inv = (PassiveT)1.0 / a.val / std::log(2.0);
+        return chain(
+                    std::log2(a.val),
+                    a_inv,
+                    -a_inv / a.val,
+                    a);
+    }
+
+    friend Scalar log10(
+            const Scalar& a)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        const PassiveT a_inv = (PassiveT)1.0 / a.val / std::log(10.0);
+        return chain(
+                    std::log10(a.val),
+                    a_inv,
+                    -a_inv / a.val,
+                    a);
+    }
+
     friend Scalar sin(
             const Scalar& a)
     {
@@ -741,6 +767,20 @@ struct Scalar
             const Scalar& b)
     {
         return max(a, b);
+    }
+
+    friend Scalar clamp(
+            const Scalar& x,
+            const Scalar& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(x);
+        if(x < a)
+            return a;
+        else if(x > b)
+            return b;
+        else
+            return x;
     }
 
     // ///////////////////////////////////////////////////////////////////////////
