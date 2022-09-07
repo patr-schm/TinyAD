@@ -368,6 +368,50 @@ TEST(ScalarTest, LogDoubleSecondOrder) { test_log<double, true>(1e-12); }
 TEST(ScalarTest, LogLongDoubleSecondOrder) { test_log<long double, true>(1e-12); }
 
 template <typename PassiveT, bool with_hessian>
+void test_log2(const PassiveT _eps)
+{
+    // a(x) = x^2 + x + 2 at x=1
+    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const auto f = log2(a);
+    ASSERT_NEAR(f.val, 2.0, _eps);
+    ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(2.0), _eps);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), -1.0 / 16.0 / std::log(2.0), _eps);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, _eps);
+    }
+}
+
+TEST(ScalarTest, Log2FloatFirstOrder) { test_log2<float, false>(1e-4f); }
+TEST(ScalarTest, Log2DoubleFirstOrder) { test_log2<double, false>(1e-12); }
+TEST(ScalarTest, Log2LongDoubleFirstOrder) { test_log2<long double, false>(1e-12); }
+TEST(ScalarTest, Log2FloatSecondOrder) { test_log2<float, true>(1e-4f); }
+TEST(ScalarTest, Log2DoubleSecondOrder) { test_log2<double, true>(1e-12); }
+TEST(ScalarTest, Log2LongDoubleSecondOrder) { test_log2<long double, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian>
+void test_log10(const PassiveT _eps)
+{
+    // a(x) = x^2 + x + 2 at x=1
+    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const auto f = log10(a);
+    ASSERT_NEAR(f.val, std::log10(4.0), _eps);
+    ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(10.0), _eps);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), -1.0 / 16.0 / std::log(10.0), _eps);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, _eps);
+    }
+}
+
+TEST(ScalarTest, Log10FloatFirstOrder) { test_log10<float, false>(1e-4f); }
+TEST(ScalarTest, Log10DoubleFirstOrder) { test_log10<double, false>(1e-12); }
+TEST(ScalarTest, Log10LongDoubleFirstOrder) { test_log10<long double, false>(1e-12); }
+TEST(ScalarTest, Log10FloatSecondOrder) { test_log10<float, true>(1e-4f); }
+TEST(ScalarTest, Log10DoubleSecondOrder) { test_log10<double, true>(1e-12); }
+TEST(ScalarTest, Log10LongDoubleSecondOrder) { test_log10<long double, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian>
 void test_sin(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
@@ -1275,6 +1319,13 @@ void test_comparison()
     ASSERT_FALSE(a >= 2.0);
 }
 
+TEST(ScalarTest, ComparisonFloatFirstOrder) { test_comparison<float, false>(); }
+TEST(ScalarTest, ComparisonDoubleFirstOrder) { test_comparison<double, false>(); }
+TEST(ScalarTest, ComparisonLongDoubleFirstOrder) { test_comparison<long double, false>(); }
+TEST(ScalarTest, ComparisonFloatSecondOrder) { test_comparison<float, true>(); }
+TEST(ScalarTest, ComparisonDoubleSecondOrder) { test_comparison<double, true>(); }
+TEST(ScalarTest, ComparisonLongDoubleSecondOrder) { test_comparison<long double, true>(); }
+
 template <typename PassiveT>
 void test_min_max()
 {
@@ -1302,12 +1353,27 @@ TEST(ScalarTest, MinMaxFloat) { test_min_max<float>(); }
 TEST(ScalarTest, MinMaxDouble) { test_min_max<double>(); }
 TEST(ScalarTest, MinMaxLongDouble) { test_min_max<long double>(); }
 
-TEST(ScalarTest, ComparisonFloatFirstOrder) { test_comparison<float, false>(); }
-TEST(ScalarTest, ComparisonDoubleFirstOrder) { test_comparison<double, false>(); }
-TEST(ScalarTest, ComparisonLongDoubleFirstOrder) { test_comparison<long double, false>(); }
-TEST(ScalarTest, ComparisonFloatSecondOrder) { test_comparison<float, true>(); }
-TEST(ScalarTest, ComparisonDoubleSecondOrder) { test_comparison<double, true>(); }
-TEST(ScalarTest, ComparisonLongDoubleSecondOrder) { test_comparison<long double, true>(); }
+template <typename PassiveT>
+void test_clamp()
+{
+    TinyAD::Scalar<1, PassiveT> x(4.0, 3.0, 2.0);
+
+    ASSERT_EQ(clamp(x, 0.0, 5.0), x);
+    ASSERT_EQ(clamp(x, 0.0, 5.0).grad, x.grad);
+    ASSERT_EQ(clamp(x, 0.0, 5.0).Hess, x.Hess);
+
+    ASSERT_EQ(clamp(x, -5.0, 0.0), 0.0);
+    ASSERT_EQ(clamp(x, -5.0, 0.0).grad(0), 0.0);
+    ASSERT_EQ(clamp(x, -5.0, 0.0).Hess(0, 0), 0.0);
+
+    ASSERT_EQ(clamp(x, 5.0, 10.0), 5.0);
+    ASSERT_EQ(clamp(x, 5.0, 10.0).grad(0), 0.0);
+    ASSERT_EQ(clamp(x, 5.0, 10.0).Hess(0, 0), 0.0);
+}
+
+TEST(ScalarTest, ClampFloat) { test_clamp<float>(); }
+TEST(ScalarTest, ClampDouble) { test_clamp<double>(); }
+TEST(ScalarTest, ClampLongDouble) { test_clamp<long double>(); }
 
 template <typename PassiveT, bool with_hessian>
 void test_sphere()
