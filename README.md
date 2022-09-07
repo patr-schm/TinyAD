@@ -142,7 +142,7 @@ Alternatively, build our [TinyAD-Examples](https://gitlab.vci.rwth-aachen.de:900
 * [Marcel Campen](http://graphics.cs.uos.de/)  
 * [Leif Kobbelt](https://www.graphics.rwth-aachen.de/person/3/)  
 
-We thank all test users and contributors. In particular: Alexandra Heuschling, Anton Florey, Dörte Pieper, Joe Jakobi, and Philipp Domagalski.
+We thank all test users and contributors. In particular: Alexandra Heuschling, Anton Florey, Dörte Pieper, Joe Jakobi, Philipp Domagalski, and David Jourdan.
 
 # Cite TinyAD
 If you use TinyAD in your academic work, please cite our paper:
