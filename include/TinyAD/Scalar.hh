@@ -775,9 +775,9 @@ struct Scalar
             const Scalar& b)
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(x);
-        if(x < a)
+        if (x < a)
             return a;
-        else if(x > b)
+        else if (x > b)
             return b;
         else
             return x;
