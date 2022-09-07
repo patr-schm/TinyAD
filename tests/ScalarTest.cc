@@ -1356,7 +1356,7 @@ TEST(ScalarTest, MinMaxLongDouble) { test_min_max<long double>(); }
 template <typename PassiveT>
 void test_clamp()
 {
-    TinyAD::Scalar<1, PassiveT, with_hessian> x(4.0, 3.0, 2.0);
+    TinyAD::Scalar<1, PassiveT> x(4.0, 3.0, 2.0);
 
     ASSERT_EQ(clamp(x, 0.0, 5.0), x);
     ASSERT_EQ(clamp(x, 0.0, 5.0).grad, x.grad);
@@ -1371,9 +1371,9 @@ void test_clamp()
     ASSERT_EQ(clamp(x, 5.0, 10.0).Hess(0, 0), 0.0);
 }
 
-TEST(ScalarTest, MinMaxFloat) { test_clamp<float>(); }
-TEST(ScalarTest, MinMaxDouble) { test_clamp<double>(); }
-TEST(ScalarTest, MinMaxLongDouble) { test_clamp<long double>(); }
+TEST(ScalarTest, ClampFloat) { test_clamp<float>(); }
+TEST(ScalarTest, ClampDouble) { test_clamp<double>(); }
+TEST(ScalarTest, ClampLongDouble) { test_clamp<long double>(); }
 
 template <typename PassiveT, bool with_hessian>
 void test_sphere()
