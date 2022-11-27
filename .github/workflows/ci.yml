@@ -1,0 +1,85 @@
+name: CI
+on: [push]
+jobs:
+  Ubuntu:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libeigen3-dev libgtest-dev
+      - name: Check out TinyAD
+        uses: actions/checkout@v3
+      - name: Configure
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTINYAD_UNIT_TESTS=ON .
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.build_type }} --parallel $(nproc)
+      - name: Run Tests
+        run: ${{ github.workspace }}/build/TinyAD-Tests --gtest_output="xml:test-report.xml"
+      - name: Create Test Report
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: test-report.xml
+
+  macOS:
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    runs-on: macos-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          brew update
+          brew install eigen googletest
+      - name: Check out TinyAD
+        uses: actions/checkout@v3
+      - name: Configure
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DTINYAD_UNIT_TESTS=ON .
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.build_type }} --parallel $(sysctl -n hw.ncpu)
+      - name: Run Tests
+        run: ${{ github.workspace }}/build/TinyAD-Tests --gtest_output="xml:test-report.xml"
+      - name: Create Test Report
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: test-report.xml
+
+  Windows:
+    strategy:
+      fail-fast: false
+      matrix:
+        vs_version: [VS19, VS22]
+        build_type: [Release, Debug]
+        include:
+          - vs_version: VS19
+            os: windows-2019
+          - vs_version: VS22
+            os: windows-2022
+    runs-on: ${{ matrix.os }}
+    env:
+      BUILD_TYPE: ${{ matrix.build_type }}
+    steps:
+      - name: Install Dependencies
+        run: |
+          C:\vcpkg\bootstrap-vcpkg.bat
+          vcpkg install eigen3:x64-windows gtest:x64-windows
+      - name: Check out TinyAD
+        uses: actions/checkout@v3
+      - name: Configure
+        run: cmake -B ${{ github.workspace }}/build -DCMAKE_TOOLCHAIN_FILE=C:/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_CXX_FLAGS="/bigobj" -DTINYAD_UNIT_TESTS=ON .
+      - name: Build
+        run: cmake --build ${{ github.workspace }}/build --config ${{ matrix.build_type }} --parallel
+      - name: Run Tests
+        run: ${{ github.workspace }}\build\${{ env.BUILD_TYPE }}\TinyAD-Tests.exe --gtest_output="xml:test-report.xml"
+      - name: Create Test Report
+        if: always()
+        uses: test-summary/action@v2
+        with:
+          paths: test-report.xml
