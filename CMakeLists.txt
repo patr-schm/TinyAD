@@ -44,13 +44,20 @@ if (${TINYAD_UNIT_TESTS})
 
     message("Building TinyAD with unit tests.")
 
-    if (TARGET gtest)
-        add_library(GTest::GTest ALIAS gtest)
-        add_library(GTest::Main ALIAS gtest_main)
-    endif()
+    if (TARGET GTest::gtest_main)
+        message("Found existing gtest target.")
+    else()
+        message("Downloading googletest.")
 
-    if (NOT TARGET GTest::GTest)
-        find_package(GTest REQUIRED)
+        # From https://google.github.io/googletest/quickstart-cmake.html
+        include(FetchContent)
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/71140c3ca7a87bb1b5b9c9f1500fea8858cce344.zip
+        )
+        # For Windows: Prevent overriding the parent project's compiler/linker settings
+        set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
     endif()
 
     file(GLOB_RECURSE TINYAD_TEST_HEADERS tests/*.hh)
@@ -59,7 +66,7 @@ if (${TINYAD_UNIT_TESTS})
     add_dependencies(TinyAD-Tests TinyAD)
     target_include_directories(TinyAD-Tests PUBLIC "include")
     target_link_libraries(TinyAD-Tests PRIVATE
-        GTest::Main
+        GTest::gtest_main
         TinyAD
     )
     add_test(TinyAD-Tests TinyAD-Tests)
