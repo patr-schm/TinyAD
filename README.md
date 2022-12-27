@@ -122,17 +122,18 @@ We implement one of the objective terms from [Geometric Modeling with Conical Me
 * Note that calls to math functions involving TinyAD types are only legal if the derivatives exist and are finite for the given function argument. E.g. it is illegal to call `acos(x)` with `x==1.0` since the derivative of acos is unbounded at 1.0.
 
 # Unit Tests
-When you contribute to TinyAD, please run (and extend) the unit tests located in [`TinyAD/tests`](https://github.com/patr-schm/TinyAD/tree/main/tests).
+When contributing to TinyAD, please run (and extend) the unit tests located in [`TinyAD/tests`](https://github.com/patr-schm/TinyAD/tree/main/tests).
 
-With [googletest](https://github.com/google/googletest) installed on your system, build the unit tests via:
+You can build an run the unit tests via:
 ```
 mkdir build
 cd build
-cmake -DGTEST_ROOT=~/path/to/gtest-1.10.0 -DTINYAD_UNIT_TESTS=ON ..
+cmake -DTINYAD_UNIT_TESTS=ON ..
 make -j4
+./TinyAD-Tests
 ```
 
-Alternatively, build our [TinyAD-Examples](https://github.com/patr-schm/TinyAD-Examples) project, which clones googletest as a submodule.
+Alternatively, use [TinyAD-Examples](https://github.com/patr-schm/TinyAD-Examples) project which builds the unit tests by default.
 
 # Authors
 
