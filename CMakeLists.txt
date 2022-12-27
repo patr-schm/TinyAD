@@ -49,6 +49,11 @@ if (${TINYAD_UNIT_TESTS})
     else()
         message("Downloading googletest.")
 
+        # Avoid DOWNLOAD_EXTRACT_TIMESTAMP warning
+        if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+            cmake_policy(SET CMP0135 NEW)
+        endif()
+
         # From https://google.github.io/googletest/quickstart-cmake.html
         include(FetchContent)
         FetchContent_Declare(
