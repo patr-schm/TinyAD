@@ -11,7 +11,7 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install libeigen3-dev libgtest-dev
+          sudo apt-get install libeigen3-dev
       - name: Check out TinyAD
         uses: actions/checkout@v3
       - name: Configure
@@ -36,7 +36,7 @@ jobs:
       - name: Install Dependencies
         run: |
           brew update
-          brew install eigen googletest
+          brew install eigen
       - name: Check out TinyAD
         uses: actions/checkout@v3
       - name: Configure
@@ -69,7 +69,7 @@ jobs:
       - name: Install Dependencies
         run: |
           C:\vcpkg\bootstrap-vcpkg.bat
-          vcpkg install eigen3:x64-windows gtest:x64-windows
+          vcpkg install eigen3:x64-windows
       - name: Check out TinyAD
         uses: actions/checkout@v3
       - name: Configure
