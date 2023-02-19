@@ -10,7 +10,9 @@ TinyAD has been tested on Linux, Mac, and Windows (VS >= 2017). It only requires
 * A C++17 compiler 
 * Eigen (e.g. `sudo apt-get install libeigen3-dev`)
 
-To use TinyAD, include either `TinyAD/Scalar.hh`, `TinyAD/ScalarFunction.hh`, or `TinyAD/VectorFunction.hh`.
+To use TinyAD in your existing project, include either `TinyAD/Scalar.hh`, `TinyAD/ScalarFunction.hh`, or `TinyAD/VectorFunction.hh`.
+
+A minimal example project using TinyAD with [libigl](https://github.com/libigl/libigl/) is available [here](https://github.com/alecjacobson/libigl-tinyad-example).
 
 # Basic Usage
 We provide the scalar type `TinyAD::Double<k>` as a drop-in replacement for `double`. For small problems, simply choose the number of variables `k` and generate a vector of active variables. Then, perform computations as usual (e.g. using Eigen) and query the gradient and Hessian of any intermediate variable:
