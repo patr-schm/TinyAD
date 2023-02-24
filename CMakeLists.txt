@@ -32,6 +32,7 @@ add_library(TinyAD INTERFACE)
 #target_sources(TinyAD INTERFACE ${TINYAD_HEADERS}) # IDE shows TinyAD headers for each target
 add_custom_target(TinyAD-Headers SOURCES ${TINYAD_HEADERS}) # IDE shows TinyAD headers in one place only
 target_include_directories(TinyAD INTERFACE include)
+target_compile_options(TinyAD INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/bigobj>)
 target_link_libraries(TinyAD INTERFACE Eigen3::Eigen)
 if (TARGET OpenMP::OpenMP_CXX)
     target_link_libraries(TinyAD INTERFACE OpenMP::OpenMP_CXX)
