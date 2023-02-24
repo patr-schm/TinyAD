@@ -127,7 +127,7 @@ struct Element
      * Access to the element handle
      * (e.g. a triangle in mesh parametrization).
      */
-    ElementHandleT handle = -1;
+    ElementHandleT handle;
 
     /**
      * Index map from local per-element variables (n_element many)
