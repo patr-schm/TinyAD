@@ -229,7 +229,7 @@ build-VS2017-debug:
     - echo "On branch $CI_COMMIT_BRANCH!"
     - mkdir build
     - cd build
-    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2017_GENERATOR" -DCMAKE_CXX_FLAGS="/bigobj" -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2017_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2017_GENERATOR" -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2017_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
     - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2017\Professional\Common7\IDE\devenv.com /Build "Debug" TinyAD.sln /Project "ALL_BUILD"
   artifacts:
     paths:
@@ -298,7 +298,7 @@ build-VS2019-debug:
     - echo "On branch $CI_COMMIT_BRANCH!"
     - mkdir build
     - cd build
-    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2019_GENERATOR" -DCMAKE_CXX_FLAGS="/bigobj" -DCMAKE_GENERATOR_PLATFORM=x64 -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2019_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
+    - C:\"Program Files"\CMake\bin\cmake.exe -G "$VS2019_GENERATOR" -DCMAKE_GENERATOR_PLATFORM=x64 -DEigen3_DIR="$WINDOWS_EIGEN3_DIR" -DGTEST_ROOT="$VS2019_GTEST_ROOT" -DTINYAD_UNIT_TESTS=ON ..
     - C:\"Program Files (x86)"\"Microsoft Visual Studio"\2019\Professional\Common7\IDE\devenv.com /Build "Debug" TinyAD.sln /Project "ALL_BUILD"
   artifacts:
     paths:
