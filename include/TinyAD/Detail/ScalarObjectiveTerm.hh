@@ -192,7 +192,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
                 _g[elements[i_element].idx_local_to_global[i]] += element_results[i_element].grad[i];
 
             // Add to global Hessian
-            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
+            using SparseIndex = typename Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i = 0; i < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++i)
             {
                 for (Eigen::Index j = 0; j < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++j)

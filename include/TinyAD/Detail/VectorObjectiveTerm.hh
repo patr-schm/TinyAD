@@ -156,7 +156,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
             const auto& element = elements[i_element];
             const auto& residuals = element_results[i_element];
 
-            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
+            using SparseIndex = typename Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i_r_element = 0; i_r_element < residuals.size(); ++i_r_element)
             {
                 const auto& residual = residuals[i_r_element];
@@ -222,7 +222,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
             const ActiveSecondOrderElementType& element = elements[i_element];
             const ActiveSecondOrderEvalElementReturnType& residuals = element_results[i_element];
 
-            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
+            using SparseIndex = typename Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i_r_element = 0; i_r_element < residuals.size(); ++i_r_element)
             {
                 const auto& residual = residuals[i_r_element];
