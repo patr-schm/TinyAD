@@ -55,7 +55,7 @@ void test_handle_types()
     auto func = TinyAD::scalar_function<1>(variable_handles);
     func.template add_elements<1>(element_handles, [] (auto& element)
     {
-        VariableHandleT vh(TinyAD::idx_from_handle(element.handle) / 2);
+        VariableHandleT vh((int)TinyAD::idx_from_handle(element.handle) / 2);
         return element.variables(vh)[0];
     });
 

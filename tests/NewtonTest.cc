@@ -40,7 +40,7 @@ Eigen::VectorX<PassiveT> test_2d_deformation_newton(
         if (M.determinant() <= 0.0)
             return INFINITY;
 
-        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / F.rows();
+        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / (PassiveT)F.rows();
     });
 
     // Add positional penalty terms.

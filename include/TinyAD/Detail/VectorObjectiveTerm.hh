@@ -106,7 +106,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         Eigen::VectorX<PassiveT> result(n_outputs());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             // Call user code and write into segment of result vector
             PassiveElementType element(element_handles[i_element], _x);
@@ -129,7 +129,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         std::vector<ActiveFirstOrderEvalElementReturnType> element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (int i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
 
@@ -143,7 +143,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
 
         // Count number of residuals and grow r
         Eigen::Index n_residuals = 0;
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
             n_residuals += element_results[i_element].size();
 
         const Eigen::Index residuals_start_idx = _r.size();
@@ -151,11 +151,12 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
 
         // Add to global f, r, and J
         Eigen::Index i_residual = 0;
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             const auto& element = elements[i_element];
             const auto& residuals = element_results[i_element];
 
+            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i_r_element = 0; i_r_element < residuals.size(); ++i_r_element)
             {
                 const auto& residual = residuals[i_r_element];
@@ -164,11 +165,11 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
                 _r[residuals_start_idx + i_residual] = residual.val;
 
                 // Add to global Jacobian
-                for (Eigen::Index i_var_element = 0; i_var_element < element.idx_local_to_global.size(); ++i_var_element)
+                for (Eigen::Index i_var_element = 0; i_var_element < (Eigen::Index)element.idx_local_to_global.size(); ++i_var_element)
                 {
                     _J_triplets.push_back(Eigen::Triplet<PassiveT>(
-                                residuals_start_idx + i_residual,
-                                element.idx_local_to_global[i_var_element],
+                                (SparseIndex)(residuals_start_idx + i_residual),
+                                (SparseIndex)element.idx_local_to_global[i_var_element],
                                 residual.grad(i_var_element)));
                 }
 
@@ -192,7 +193,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         std::vector<ActiveSecondOrderEvalElementReturnType> element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (int i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
 
@@ -206,7 +207,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
 
         // Count number of residuals and grow r and H
         Eigen::Index n_residuals = 0;
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
             n_residuals += element_results[i_element].size();
 
         TINYAD_ASSERT_EQ(_r.size(), _H_triplets.size());
@@ -216,11 +217,12 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
 
         // Add to global f, r, J, and H
         Eigen::Index i_residual = 0;
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             const ActiveSecondOrderElementType& element = elements[i_element];
             const ActiveSecondOrderEvalElementReturnType& residuals = element_results[i_element];
 
+            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i_r_element = 0; i_r_element < residuals.size(); ++i_r_element)
             {
                 const auto& residual = residuals[i_r_element];
@@ -229,23 +231,23 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
                 _r[residuals_start_idx + i_residual] = residual.val;
 
                 // Add to global Jacobian
-                for (Eigen::Index i_var_element = 0; i_var_element < element.idx_local_to_global.size(); ++i_var_element)
+                for (Eigen::Index i_var_element = 0; i_var_element < (Eigen::Index)element.idx_local_to_global.size(); ++i_var_element)
                 {
                     _J_triplets.push_back(Eigen::Triplet<PassiveT>(
-                                residuals_start_idx + i_residual,
-                                element.idx_local_to_global[i_var_element],
+                                (SparseIndex)(residuals_start_idx + i_residual),
+                                (SparseIndex)element.idx_local_to_global[i_var_element],
                                 residual.grad(i_var_element)));
                 }
 
                 // Add to global Hessian
-                for (Eigen::Index i = 0; i < element.idx_local_to_global.size(); ++i)
+                for (Eigen::Index i = 0; i < (Eigen::Index)element.idx_local_to_global.size(); ++i)
                 {
-                    for (Eigen::Index j = 0; j < element.idx_local_to_global.size(); ++j)
+                    for (Eigen::Index j = 0; j < (Eigen::Index)element.idx_local_to_global.size(); ++j)
                     {
                         _H_triplets[residuals_start_idx + i_residual].push_back(Eigen::Triplet<PassiveT>(
-                                   element.idx_local_to_global[i],
-                                   element.idx_local_to_global[j],
-                                   residual.Hess(i, j)));
+                                    (SparseIndex)element.idx_local_to_global[i],
+                                    (SparseIndex)element.idx_local_to_global[j],
+                                    residual.Hess(i, j)));
                     }
                 }
 
@@ -266,7 +268,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         Eigen::VectorX<PassiveT> squared_element_results(element_handles.size());
 
         #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             // Call user code and square results
             PassiveElementType element(element_handles[i_element], _x);
@@ -276,7 +278,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
 
         // Add up squared results
         PassiveT result = 0.0;
-        for (Eigen::Index i_element = 0; i_element < element_handles.size(); ++i_element)
+        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
             result += squared_element_results[i_element];
 
         return result;

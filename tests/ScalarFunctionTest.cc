@@ -18,13 +18,13 @@ void test_1d()
         Eigen::Vector<T, 1> v = element.variables(0);
 
         T x = v[0];
-        return 2.0 * sqr(x) + x + 1.0;
+        return (PassiveT)2.0 * sqr(x) + x + (PassiveT)1.0;
     });
 
     using Vector1 = Eigen::Matrix<PassiveT, 1, 1>;
     auto [f, g, H] = func.eval_with_hessian_proj(Vector1(1.0));
 
-    const PassiveT eps = 1e-16;
+    const PassiveT eps = (PassiveT)1e-16;
     ASSERT_NEAR(f, 4.0, eps);
     ASSERT_NEAR(g[0], 5.0, eps);
     ASSERT_NEAR(H.coeff(0, 0), 4.0, eps);
@@ -45,7 +45,7 @@ void test_2d()
         using T = TINYAD_SCALAR_TYPE(element);
         Eigen::Vector2<T> x = element.variables(0);
 
-        return 2.0 * sqr(x[0]) + 2.0 * x[0] * x[1] + sqr(x[1]) + x[0] + 1.0;
+        return (PassiveT)2.0 * sqr(x[0]) + (PassiveT)2.0 * x[0] * x[1] + sqr(x[1]) + x[0] + (PassiveT)1.0;
     });
 
     const Eigen::Vector2<PassiveT> x(1.0, 2.0);
@@ -53,7 +53,7 @@ void test_2d()
     auto [f, g, H] = func.eval_with_derivatives(x);
     auto [f2, g2, H_proj] = func.eval_with_hessian_proj(x);
 
-    const PassiveT eps = 1e-16;
+    const PassiveT eps = (PassiveT)1e-16;
     ASSERT_NEAR(f, 12, eps);
     ASSERT_NEAR(f2, 12, eps);
     ASSERT_NEAR(g[0], 9.0, eps);
@@ -85,7 +85,7 @@ void test_2d_non_convex()
         using T = TINYAD_SCALAR_TYPE(element);
         Eigen::Vector2<T> x = element.variables(0);
 
-        return -(2.0 * sqr(x[0]) + 2.0 * x[0] * x[1] + sqr(x[1]) + x[0] + 1.0);
+        return -((PassiveT)2.0 * sqr(x[0]) + (PassiveT)2.0 * x[0] * x[1] + sqr(x[1]) + x[0] + (PassiveT)1.0);
     });
 
     const Eigen::Vector2<PassiveT> x(1.0, 2.0);
@@ -93,7 +93,7 @@ void test_2d_non_convex()
     auto [f, g, H] = func.eval_with_derivatives(x);
     auto [f2, g2, H_proj] = func.eval_with_hessian_proj(x);
 
-    const PassiveT eps = 1e-16;
+    const PassiveT eps = (PassiveT)1e-16;
     ASSERT_NEAR(f, -12, eps);
     ASSERT_NEAR(f2, -12, eps);
     ASSERT_NEAR(g[0], -9.0, eps);

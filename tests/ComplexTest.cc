@@ -117,9 +117,9 @@ void test_complex(const PassiveT _eps)
     }
 }
 
-TEST(ComplexTest, ComplexFloatFirstOrder) { test_complex<float, false>(1e-6); }
+TEST(ComplexTest, ComplexFloatFirstOrder) { test_complex<float, false>(1e-6f); }
 TEST(ComplexTest, ComplexDoubleFirstOrder) { test_complex<double, false>(1e-12); }
 TEST(ComplexTest, ComplexLongDoubleFirstOrder) { test_complex<long double, false>(1e-15); }
-TEST(ComplexTest, ComplexFloatSecondOrder) { test_complex<float, true>(1e-6); }
+TEST(ComplexTest, ComplexFloatSecondOrder) { test_complex<float, true>(1e-6f); }
 TEST(ComplexTest, ComplexDoubleSecondOrder) { test_complex<double, true>(1e-12); }
 TEST(ComplexTest, ComplexLongDoubleSecondOrder) { test_complex<long double, true>(1e-15); }

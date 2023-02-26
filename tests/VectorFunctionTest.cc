@@ -31,15 +31,15 @@ void test_eval()
 
     // (2.0 * x0, x0^2, x1^2)
     PassiveT f_expected = 373.0;
-    Eigen::Vector2<PassiveT> g_expected(8.0 * x[0] + 4.0 * x[0] * x[0] * x[0], 4.0 * x[1] * x[1] * x[1]);
-    Eigen::Vector3<PassiveT> r_expected(2.0 * x[0], sqr(x[0]), sqr(x[1]));
+    Eigen::Vector2<PassiveT> g_expected((PassiveT)8.0 * x[0] + (PassiveT)4.0 * x[0] * x[0] * x[0], (PassiveT)4.0 * x[1] * x[1] * x[1]);
+    Eigen::Vector3<PassiveT> r_expected((PassiveT)2.0 * x[0], sqr(x[0]), sqr(x[1]));
     Eigen::SparseMatrix<PassiveT> J_expected(3, 2);
-    J_expected.coeffRef(0, 0) = 2.0;
-    J_expected.coeffRef(1, 0) = 2.0 * x[0];
-    J_expected.coeffRef(2, 1) = 2.0 * x[1];
+    J_expected.coeffRef(0, 0) = (PassiveT)2.0;
+    J_expected.coeffRef(1, 0) = (PassiveT)2.0 * x[0];
+    J_expected.coeffRef(2, 1) = (PassiveT)2.0 * x[1];
     std::vector<Eigen::SparseMatrix<PassiveT>> H_expected(3, Eigen::SparseMatrix<PassiveT>(2, 2));
-    H_expected[1].coeffRef(0, 0) = 2.0;
-    H_expected[2].coeffRef(1, 1) = 2.0;
+    H_expected[1].coeffRef(0, 0) = (PassiveT)2.0;
+    H_expected[2].coeffRef(1, 1) = (PassiveT)2.0;
 
     {   // Test eval()
         Eigen::VectorX<PassiveT> r = func.eval(x);

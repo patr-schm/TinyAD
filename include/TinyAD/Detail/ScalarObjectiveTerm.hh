@@ -141,7 +141,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].grad);
         }
 
-        // Add to global f, g and H
+        // Add to global f and g
         for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
         {
             _f += element_results[i_element].val;
@@ -192,13 +192,14 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
                 _g[elements[i_element].idx_local_to_global[i]] += element_results[i_element].grad[i];
 
             // Add to global Hessian
+            using SparseIndex = Eigen::SparseMatrix<PassiveT>::StorageIndex;
             for (Eigen::Index i = 0; i < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++i)
             {
                 for (Eigen::Index j = 0; j < (Eigen::Index)elements[i_element].idx_local_to_global.size(); ++j)
                 {
                     _H_triplets.push_back(Eigen::Triplet<PassiveT>(
-                               elements[i_element].idx_local_to_global[i],
-                               elements[i_element].idx_local_to_global[j],
+                               (SparseIndex)elements[i_element].idx_local_to_global[i],
+                               (SparseIndex)elements[i_element].idx_local_to_global[j],
                                element_results[i_element].Hess(i, j)));
                 }
             }

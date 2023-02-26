@@ -49,10 +49,10 @@ void test_svd(
     }
 }
 
-TEST(SVDTest, SVDFloatFirstOrder) { test_svd<float, false>(1e-6, 1e-6, 1e-4); }
+TEST(SVDTest, SVDFloatFirstOrder) { test_svd<float, false>(1e-6f, 1e-6f, 1e-4f); }
 TEST(SVDTest, SVDDoubleFirstOrder) { test_svd<double, false>(1e-12, 1e-8, 1e-4); }
 TEST(SVDTest, SVDLongDoubleFirstOrder) { test_svd<long double, false>(1e-12, 1e-8, 1e-4); }
-TEST(SVDTest, SVDFloatSecondOrder) { test_svd<float, true>(1e-6, 1e-6, 1e-3); }
+TEST(SVDTest, SVDFloatSecondOrder) { test_svd<float, true>(1e-6f, 1e-6f, 1e-3f); }
 TEST(SVDTest, SVDDoubleSecondOrder) { test_svd<double, true>(1e-12, 1e-8, 1e-4); }
 TEST(SVDTest, SVDLongDoubleSecondOrder) { test_svd<long double, true>(1e-12, 1e-8, 1e-4); }
 
@@ -91,9 +91,9 @@ void test_closest_orthogonal(
     }
 }
 
-TEST(SVDTest, ClosestOrthogonalFloatFirstOrder) { test_closest_orthogonal<float, false>(1e-6, 1e-6, 1e-4); }
+TEST(SVDTest, ClosestOrthogonalFloatFirstOrder) { test_closest_orthogonal<float, false>(1e-6f, 1e-6f, 1e-4f); }
 TEST(SVDTest, ClosestOrthogonalDoubleFirstOrder) { test_closest_orthogonal<double, false>(1e-12, 1e-8, 1e-4); }
 TEST(SVDTest, ClosestOrthogonalLongDoubleFirstOrder) { test_closest_orthogonal<long double, false>(1e-12, 1e-8, 1e-4); }
-TEST(SVDTest, ClosestOrthogonalFloatSecondOrder) { test_closest_orthogonal<float, true>(1e-6, 1e-6, 1e-3); }
+TEST(SVDTest, ClosestOrthogonalFloatSecondOrder) { test_closest_orthogonal<float, true>(1e-6f, 1e-6f, 1e-3f); }
 TEST(SVDTest, ClosestOrthogonalDoubleSecondOrder) { test_closest_orthogonal<double, true>(1e-12, 1e-8, 1e-4); }
 TEST(SVDTest, ClosestOrthogonalLongDoubleSecondOrder) { test_closest_orthogonal<long double, true>(1e-12, 1e-8, 1e-4); }

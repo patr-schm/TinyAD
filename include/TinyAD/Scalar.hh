@@ -162,7 +162,7 @@ struct Scalar
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        const PassiveT f2 = std::pow(a.val, e - 2);
+        const PassiveT f2 = (PassiveT)std::pow(a.val, e - 2);
         const PassiveT f1 = f2 * a.val;
         const PassiveT f = f1 * a.val;
 
@@ -234,7 +234,7 @@ struct Scalar
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        const PassiveT a_inv = (PassiveT)1.0 / a.val / std::log(2.0);
+        const PassiveT a_inv = (PassiveT)1.0 / a.val / (PassiveT)std::log(2.0);
         return chain(
                     std::log2(a.val),
                     a_inv,
@@ -247,7 +247,7 @@ struct Scalar
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        const PassiveT a_inv = (PassiveT)1.0 / a.val / std::log(10.0);
+        const PassiveT a_inv = (PassiveT)1.0 / a.val / (PassiveT)std::log(10.0);
         return chain(
                     std::log10(a.val),
                     a_inv,

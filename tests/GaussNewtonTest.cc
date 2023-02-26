@@ -92,7 +92,7 @@ Eigen::VectorX<PassiveT> test_2d_deformation_gauss_newton(
         if (M.determinant() <= 0.0)
             return INFINITY;
 
-        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / F.rows();
+        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / (PassiveT)F.rows();
     });
     func_ref.template add_elements<1>(TinyAD::range(b.size()), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element)
     {

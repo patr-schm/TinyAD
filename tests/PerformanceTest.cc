@@ -67,11 +67,11 @@ void test_2d_deformation_performance(
         if (M.determinant() <= 0.0)
             return INFINITY;
 
-        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / F.rows();
+        return ((M * Mr.inverse()).squaredNorm() + (Mr * M.inverse()).squaredNorm()) / (PassiveT)F.rows();
     });
 
     // Assemble initial x vector
-    Eigen::VectorX<PassiveT> x = func.x_from_data([&] (int v_idx) { return V.row(v_idx); });
+    Eigen::VectorX<PassiveT> x = func.x_from_data([&] (Eigen::Index v_idx) { return V.row(v_idx); });
 
     // Eval derivatives
     {
