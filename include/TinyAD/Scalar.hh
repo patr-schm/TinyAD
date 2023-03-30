@@ -16,7 +16,7 @@ namespace TinyAD
 /**
   * Forward-differentiable scalar type with constructors for passive and active variables.
   * Each scalar carries its gradient and Hessian w.r.t. a variable vector.
-  *     k: Size of variable vector.
+  *     k: Size of variable vector at compile time. (Eigen::Dynamic is possible, but experimental and slow.)
   *     PassiveT: Internal floating point type, e.g. double.
   *     with_hessian: Set to false for gradient-only mode.
   */
@@ -28,8 +28,7 @@ struct Scalar
     static constexpr bool with_hessian_ = with_hessian;
     static constexpr bool dynamic_mode_ = k == Eigen::Dynamic;
 
-    // Determine Hessian data type at compile time. Use 0-by-0 if no Hessian required.
-    using PassiveType = PassiveT;
+    // Determine derivative data types at compile time. Use 0-by-0 if no Hessian required.
     using GradType = Eigen::Matrix<PassiveT, k, 1>;
     using HessType = typename std::conditional_t<
                 with_hessian,
@@ -48,7 +47,7 @@ struct Scalar
     Scalar& operator=(Scalar&& _rhs) = default;
 
     /// Passive variable a.k.a. constant.
-    /// Gradient and Hessian are zero (or empty in dynamic mode).
+    /// Gradient and Hessian are zero.
     Scalar(PassiveT _val)
         : val(_val)
     {
@@ -77,16 +76,9 @@ struct Scalar
     {
         static_assert(k == 1 || dynamic_mode_, "Constructor only available for scalar case.");
 
-        if constexpr (dynamic_mode_)
-        {
-            grad = GradType::Zero(1);
-            if constexpr (with_hessian)
-                Hess = HessType::Zero(1, 1);
-        }
-
-        grad(0) = _grad;
+        grad = GradType::Constant(1, _grad);
         if constexpr (with_hessian)
-            Hess(0, 0) = _Hess;
+            Hess = HessType::Constant(1, 1, _Hess);
     }
 
     /// Initialize passive variable a.k.a. constant with zero derivatives of size _k_dynamic.
@@ -160,7 +152,6 @@ struct Scalar
     {
         return make_active(Eigen::Map<const Eigen::Matrix<PassiveT, Eigen::Dynamic, 1>>(_passive.begin(), _passive.size()));
     }
-
 
     // ///////////////////////////////////////////////////////////////////////////
     // Unary operators

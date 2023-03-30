@@ -1,4 +1,4 @@
-/*
+﻿/*
  * This file is part of TinyAD and released under the MIT license.
  * Author: Patrick Schmidt
  */
@@ -9,7 +9,7 @@
 #include <TinyAD/Utils/Helpers.hh>
 
 template <typename PassiveT, bool with_hessian>
-void test_constructors()
+void test_constructors_static()
 {
     static_assert(std::is_copy_constructible<TinyAD::Scalar<6, PassiveT>>::value, "");
     static_assert(std::is_move_constructible<TinyAD::Scalar<6, PassiveT>>::value, "");
@@ -44,19 +44,66 @@ void test_constructors()
     }
 }
 
-TEST(ScalarTest, ConstructorsFloatFirstOrder) { test_constructors<float, false>(); }
-TEST(ScalarTest, ConstructorsDoubleFirstOrder) { test_constructors<double, false>(); }
-TEST(ScalarTest, ConstructorsLongDoubleFirstOrder) { test_constructors<long double, false>(); }
-TEST(ScalarTest, ConstructorsFloatSecondOrder) { test_constructors<float, true>(); }
-TEST(ScalarTest, ConstructorsDoubleSecondOrder) { test_constructors<double, true>(); }
-TEST(ScalarTest, ConstructorsLongDoubleSecondOrder) { test_constructors<long double, true>(); }
+TEST(ScalarTest, ConstructorsFloatFirstOrder) { test_constructors_static<float, false>(); }
+TEST(ScalarTest, ConstructorsDoubleFirstOrder) { test_constructors_static<double, false>(); }
+TEST(ScalarTest, ConstructorsLongDoubleFirstOrder) { test_constructors_static<long double, false>(); }
+TEST(ScalarTest, ConstructorsFloatSecondOrder) { test_constructors_static<float, true>(); }
+TEST(ScalarTest, ConstructorsDoubleSecondOrder) { test_constructors_static<double, true>(); }
+TEST(ScalarTest, ConstructorsLongDoubleSecondOrder) { test_constructors_static<long double, true>(); }
 
 template <typename PassiveT, bool with_hessian>
+void test_constructors_dynamic()
+{
+    static_assert(std::is_copy_constructible<TinyAD::Scalar<Eigen::Dynamic, PassiveT>>::value, "");
+    static_assert(std::is_move_constructible<TinyAD::Scalar<Eigen::Dynamic, PassiveT>>::value, "");
+    static_assert(std::is_copy_assignable<TinyAD::Scalar<Eigen::Dynamic, PassiveT>>::value, "");
+    static_assert(std::is_move_assignable<TinyAD::Scalar<Eigen::Dynamic, PassiveT>>::value, "");
+
+    const Eigen::Index k = 2;
+
+    {
+        // Active variable
+        using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+        ADouble a = ADouble::make_active(4.0, 0, k);
+        ASSERT_EQ(a.val, 4.0);
+        ASSERT_EQ(a.grad[0], 1.0);
+        ASSERT_EQ(a.grad[1], 0.0);
+        ASSERT_TRUE(a.Hess.isZero());
+
+        // Passive variable
+        ADouble b = ADouble::make_passive(5.0, k);
+        ASSERT_EQ(b.val, 5.0);
+        ASSERT_TRUE(b.grad.isZero());
+        ASSERT_TRUE(b.Hess.isZero());
+
+        // Copy constructor
+        const auto a2(a);
+        ASSERT_EQ(a.val, a2.val);
+        ASSERT_EQ(a.grad, a2.grad);
+        ASSERT_EQ(a.Hess, a2.Hess);
+
+        // Assignment operator
+        const auto b2 = b;
+        ASSERT_EQ(b.val, b2.val);
+        ASSERT_EQ(b.grad, b2.grad);
+        ASSERT_EQ(b.Hess, b2.Hess);
+    }
+}
+
+TEST(ScalarTest, ConstructorsFloatFirstOrderDynamic) { test_constructors_dynamic<float, false>(); }
+TEST(ScalarTest, ConstructorsDoubleFirstOrderDynamic) { test_constructors_dynamic<double, false>(); }
+TEST(ScalarTest, ConstructorsLongDoubleFirstOrderDynamic) { test_constructors_dynamic<long double, false>(); }
+TEST(ScalarTest, ConstructorsFloatSecondOrderDynamic) { test_constructors_dynamic<float, true>(); }
+TEST(ScalarTest, ConstructorsDoubleSecondOrderDynamic) { test_constructors_dynamic<double, true>(); }
+TEST(ScalarTest, ConstructorsLongDoubleSecondOrderDynamic) { test_constructors_dynamic<long double, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_to_passive()
 {
     {
         // make_active()
-        const auto v = TinyAD::Scalar<2, PassiveT, with_hessian>::make_active({ 2.0, 4.0 });
+        constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+        const auto v = TinyAD::Scalar<dim, PassiveT, with_hessian>::make_active({ 2.0, 4.0 });
         ASSERT_EQ(v[0].val, 2.0);
         ASSERT_EQ(v[1].val, 4.0);
         ASSERT_EQ(v[0].grad[0], 1.0);
@@ -77,9 +124,10 @@ void test_to_passive()
 
     {
         // to_passive() matrix
-        using ActiveT = TinyAD::Scalar<4, PassiveT, with_hessian>;
-        const Eigen::Vector<ActiveT, 4> v = ActiveT::make_active({ 1.0, 2.0, 3.0, 4.0 });
-        Eigen::Matrix<ActiveT, 2, 2> M;
+        constexpr int dim = dynamic ? Eigen::Dynamic : 4;
+        using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+        const Eigen::Vector<ADouble, dim> v = ADouble::make_active({ 1.0, 2.0, 3.0, 4.0 });
+        Eigen::Matrix<ADouble, 2, 2> M;
         M << v[0], v[1], v[2], v[3];
         const Eigen::Matrix2<PassiveT> M_passive = TinyAD::to_passive(M);
         const Eigen::Matrix2<PassiveT> M_passive2 = TinyAD::to_passive(M_passive);
@@ -94,19 +142,24 @@ void test_to_passive()
     }
 }
 
-TEST(ScalarTest, PassiveToPassiveFloatFirstOrder) { test_to_passive<float, false>(); }
-TEST(ScalarTest, PassiveToPassiveDoubleFirstOrder) { test_to_passive<double, false>(); }
-TEST(ScalarTest, PassiveToPassiveLongDoubleFirstOrder) { test_to_passive<long double, false>(); }
-TEST(ScalarTest, PassiveToPassiveFloatSecondOrder) { test_to_passive<float, true>(); }
-TEST(ScalarTest, PassiveToPassiveDoubleSecondOrder) { test_to_passive<double, true>(); }
-TEST(ScalarTest, PassiveToPassiveLongDoubleSecondOrder) { test_to_passive<long double, true>(); }
+TEST(ScalarTest, ToPassiveFloatFirstOrder) { test_to_passive<float, false>(); }
+TEST(ScalarTest, ToPassiveDoubleFirstOrder) { test_to_passive<double, false>(); }
+TEST(ScalarTest, ToPassiveLongDoubleFirstOrder) { test_to_passive<long double, false>(); }
+TEST(ScalarTest, ToPassiveFloatSecondOrder) { test_to_passive<float, true>(); }
+TEST(ScalarTest, ToPassiveDoubleSecondOrder) { test_to_passive<double, true>(); }
+TEST(ScalarTest, ToPassiveLongDoubleSecondOrder) { test_to_passive<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ToPassiveFirstOrderDynamic) { test_to_passive<double, false, true>(); }
+TEST(ScalarTest, ToPassiveSecondOrderDynamic) { test_to_passive<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_quadratic()
 {
     // f(a) = a^2 + a + 2 at a=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(1.0, 0);
-    const auto f = sqr(a) + a + 2.0;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::make_active(1.0, 0, 1);
+    const ADouble f = sqr(a) + a + 2.0;
     ASSERT_EQ(f.val, 4.0);
     ASSERT_EQ(f.grad(0), 3.0);
     if constexpr (with_hessian)
@@ -123,12 +176,16 @@ TEST(ScalarTest, QuadraticFloatSecondOrder) { test_quadratic<float, true>();}
 TEST(ScalarTest, QuadraticDoubleSecondOrder) { test_quadratic<double, true>();}
 TEST(ScalarTest, QuadraticLongDoubleSecondOrder) { test_quadratic<long double, true>();}
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, QuadraticDoubleFirstOrderDynamic) { test_quadratic<double, false, true>(); }
+TEST(ScalarTest, QuadraticDoubleSecondOrderDynamic) { test_quadratic<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_unary_minus()
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = -a;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = -a;
     ASSERT_EQ(f.val, -a.val);
     ASSERT_EQ(f.grad, -a.grad);
     if constexpr (with_hessian)
@@ -145,12 +202,16 @@ TEST(ScalarTest, UnaryMinusFloatSecondOrder) { test_unary_minus<float, true>(); 
 TEST(ScalarTest, UnaryMinusDoubleSecondOrder) { test_unary_minus<double, true>(); }
 TEST(ScalarTest, UnaryMinusLongDoubleSecondOrder) { test_unary_minus<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, UnaryMinusDoubleFirstOrderDynamic) { test_unary_minus<double, false, true>(); }
+TEST(ScalarTest, UnaryMinusDoubleSecondOrderDynamic) { test_unary_minus<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_sqrt()
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = sqrt(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sqrt(a);
     ASSERT_NEAR(f.val, 2.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0, 1e-12);
     if constexpr (with_hessian)
@@ -167,17 +228,21 @@ TEST(ScalarTest, SqrtFloatSecondOrder) { test_sqrt<float, true>(); }
 TEST(ScalarTest, SqrtDoubleSecondOrder) { test_sqrt<double, true>(); }
 TEST(ScalarTest, SqrtLongDoubleSecondOrder) { test_sqrt<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, SqrtDoubleFirstOrderDynamic) { test_sqrt<double, false, true>(); }
+TEST(ScalarTest, SqrtDoubleSecondOrderDynamic) { test_sqrt<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_sqr()
 {
-    using AD = TinyAD::Scalar<2, PassiveT, with_hessian>;
-    AD x(4.0, 0);
-    AD y(6.0, 1);
-    AD a = x * x + 7.0 * y * y -3.0 * x * 3.0 + x + 2 * y;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble x = ADouble::make_active(4.0, 0, 2);
+    ADouble y = ADouble::make_active(6.0, 1, 2);
+    ADouble a = x * x + 7.0 * y * y -3.0 * x * 3.0 + x + 2 * y;
 
-    AD a_sqr = sqr(a);
-    AD a_pow = pow(a, 2);
-    AD aa = a * a;
+    ADouble a_sqr = sqr(a);
+    ADouble a_pow = pow(a, 2);
+    ADouble aa = a * a;
 
     ASSERT_NEAR(a_sqr.val, a_pow.val, 1e-12);
     ASSERT_NEAR(a_sqr.val, aa.val, 1e-12);
@@ -209,12 +274,16 @@ TEST(ScalarTest, SqrFloatSecondOrder) { test_sqr<float, true>(); }
 TEST(ScalarTest, SqrDoubleSecondOrder) { test_sqr<double, true>(); }
 TEST(ScalarTest, SqrLongDoubleSecondOrder) { test_sqr<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, SqrDoubleFirstOrderDynamic) { test_sqr<double, false, true>(); }
+TEST(ScalarTest, SqrDoubleSecondOrderDynamic) { test_sqr<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_pow_int()
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = pow(a, 3);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = pow(a, 3);
     ASSERT_NEAR(f.val, 64.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 144.0, 1e-12);
     if constexpr (with_hessian)
@@ -231,12 +300,16 @@ TEST(ScalarTest, PowFloatIntSecondOrder) { test_pow_int<float, true>(); }
 TEST(ScalarTest, PowDoubleIntSecondOrder) { test_pow_int<double, true>(); }
 TEST(ScalarTest, PowLongDoubleIntSecondOrder) { test_pow_int<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, PowDoubleFirstOrderDynamic) { test_pow_int<double, false, true>(); }
+TEST(ScalarTest, PowDoubleSecondOrderDynamic) { test_pow_int<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_pow_real()
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = pow(a, PassiveT(3.0 / 2.0));
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = pow(a, PassiveT(3.0 / 2.0));
     ASSERT_NEAR(f.val, 8.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 9.0, 1e-12);
     if constexpr (with_hessian)
@@ -253,12 +326,17 @@ TEST(ScalarTest, PowFloatRealSecondOrder) { test_pow_real<float, true>(); }
 TEST(ScalarTest, PowDoubleRealSecondOrder) { test_pow_real<double, true>(); }
 TEST(ScalarTest, PowLongDoubleRealSecondOrder) { test_pow_real<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, PowDoubleRealFirstOrderDynamic) { test_pow_real<double, false, true>(); }
+TEST(ScalarTest, PowDoubleRealSecondOrderDynamic) { test_pow_real<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_fabs()
 {
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+
     {   // a(x) = x^3 at x = 1
-        TinyAD::Scalar<1, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
-        const auto f = fabs(a);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = fabs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
         if constexpr (with_hessian)
@@ -269,8 +347,8 @@ void test_fabs()
     }
 
     {   // a(x) = x^3 at x = -1
-        TinyAD::Scalar<1, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
-        const auto f = fabs(a);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = fabs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), -3.0, 1e-12);
         if constexpr (with_hessian)
@@ -288,12 +366,17 @@ TEST(ScalarTest, FabsFloatSecondOrder) { test_fabs<float, true>(); }
 TEST(ScalarTest, FabsDoubleSecondOrder) { test_fabs<double, true>(); }
 TEST(ScalarTest, FabsLongDoubleSecondOrder) { test_fabs<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, FabsDoubleFirstOrderDynamic) { test_fabs<double, false, true>(); }
+TEST(ScalarTest, FabsDoubleSecondOrderDynamic) { test_fabs<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_abs()
 {
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+
     {   // a(x) = x^3 at x = 1
-        TinyAD::Scalar<1, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
-        const auto f = abs(a);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = abs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
         if constexpr (with_hessian)
@@ -304,8 +387,8 @@ void test_abs()
     }
 
     {   // a(x) = x^3 at x = -1
-        TinyAD::Scalar<1, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
-        const auto f = abs(a);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
+        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = abs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), -3.0, 1e-12);
         if constexpr (with_hessian)
@@ -323,12 +406,16 @@ TEST(ScalarTest, AbsFloatSecondOrder) { test_abs<float, true>(); }
 TEST(ScalarTest, AbsDoubleSecondOrder) { test_abs<double, true>(); }
 TEST(ScalarTest, AbsLongDoubleSecondOrder) { test_abs<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, AbsDoubleFirstOrderDynamic) { test_abs<double, false, true>(); }
+TEST(ScalarTest, AbsDoubleSecondOrderDynamic) { test_abs<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_exp(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = exp(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = exp(a);
     ASSERT_NEAR(f.val, std::exp(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::exp(4.0), _eps);
     if constexpr (with_hessian)
@@ -345,12 +432,16 @@ TEST(ScalarTest, ExpFloatSecondOrder) { test_exp<float, true>(1e-4f); }
 TEST(ScalarTest, ExpDoubleSecondOrder) { test_exp<double, true>(1e-12); }
 TEST(ScalarTest, ExpLongDoubleSecondOrder) { test_exp<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ExpDoubleFirstOrderDynamic) { test_exp<double, false, true>(1e-12); }
+TEST(ScalarTest, ExpDoubleSecondOrderDynamic) { test_exp<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_log(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = log(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log(a);
     ASSERT_NEAR(f.val, 2.0 * std::log(2.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0, _eps);
     if constexpr (with_hessian)
@@ -367,12 +458,16 @@ TEST(ScalarTest, LogFloatSecondOrder) { test_log<float, true>(1e-4f); }
 TEST(ScalarTest, LogDoubleSecondOrder) { test_log<double, true>(1e-12); }
 TEST(ScalarTest, LogLongDoubleSecondOrder) { test_log<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, LogDoubleFirstOrderDynamic) { test_log<double, false, true>(1e-12); }
+TEST(ScalarTest, LogDoubleSecondOrderDynamic) { test_log<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_log2(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = log2(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log2(a);
     ASSERT_NEAR(f.val, 2.0, _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(2.0), _eps);
     if constexpr (with_hessian)
@@ -389,12 +484,16 @@ TEST(ScalarTest, Log2FloatSecondOrder) { test_log2<float, true>(1e-4f); }
 TEST(ScalarTest, Log2DoubleSecondOrder) { test_log2<double, true>(1e-12); }
 TEST(ScalarTest, Log2LongDoubleSecondOrder) { test_log2<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Log2DoubleFirstOrderDynamic) { test_log2<double, false, true>(1e-12); }
+TEST(ScalarTest, Log2DoubleSecondOrderDynamic) { test_log2<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_log10(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = log10(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log10(a);
     ASSERT_NEAR(f.val, std::log10(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(10.0), _eps);
     if constexpr (with_hessian)
@@ -411,12 +510,16 @@ TEST(ScalarTest, Log10FloatSecondOrder) { test_log10<float, true>(1e-4f); }
 TEST(ScalarTest, Log10DoubleSecondOrder) { test_log10<double, true>(1e-12); }
 TEST(ScalarTest, Log10LongDoubleSecondOrder) { test_log10<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Log10DoubleFirstOrderDynamic) { test_log10<double, false, true>(1e-12); }
+TEST(ScalarTest, Log10DoubleSecondOrderDynamic) { test_log10<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_sin(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = sin(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sin(a);
     ASSERT_NEAR(f.val, std::sin(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::cos(4.0), _eps);
     if constexpr (with_hessian)
@@ -433,12 +536,16 @@ TEST(ScalarTest, SinFloatSecondOrder) { test_sin<float, true>(1e-4f); }
 TEST(ScalarTest, SinDoubleSecondOrder) { test_sin<double, true>(1e-12); }
 TEST(ScalarTest, SinLongDoubleSecondOrder) { test_sin<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, SinDoubleFirstOrderDynamic) { test_sin<double, false, true>(1e-12); }
+TEST(ScalarTest, SinDoubleSecondOrderDynamic) { test_sin<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_cos(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = cos(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = cos(a);
     ASSERT_NEAR(f.val, std::cos(4.0), _eps);
     ASSERT_NEAR(f.grad(0), -3.0 * std::sin(4.0), _eps);
     if constexpr (with_hessian)
@@ -455,12 +562,16 @@ TEST(ScalarTest, CosFloatSecondOrder) { test_cos<float, true>(1e-4f); }
 TEST(ScalarTest, CosDoubleSecondOrder) { test_cos<double, true>(1e-12); }
 TEST(ScalarTest, CosLongDoubleSecondOrder) { test_cos<double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, CosDoubleFirstOrderDynamic) { test_cos<double, false, true>(1e-12); }
+TEST(ScalarTest, CosDoubleSecondOrderDynamic) { test_cos<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_tan(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = tan(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = tan(a);
     ASSERT_NEAR(f.val, std::tan(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / sqr(std::cos(4.0)), _eps);
     if constexpr (with_hessian)
@@ -470,19 +581,23 @@ void test_tan(const PassiveT _eps)
     }
 }
 
-TEST(ScalarTest, PassiveTanFloatFirstOrder) { test_tan<float, false>(1e-4f); }
-TEST(ScalarTest, PassiveTanDoubleFirstOrder) { test_tan<double, false>(1e-12); }
-TEST(ScalarTest, PassiveTanLongDoubleFirstOrder) { test_tan<long double, false>(1e-12); }
-TEST(ScalarTest, PassiveTanFloatSecondOrder) { test_tan<float, true>(1e-4f); }
-TEST(ScalarTest, PassiveTanDoubleSecondOrder) { test_tan<double, true>(1e-12); }
-TEST(ScalarTest, PassiveTanLongDoubleSecondOrder) { test_tan<long double, true>(1e-12); }
+TEST(ScalarTest, TanFloatFirstOrder) { test_tan<float, false>(1e-4f); }
+TEST(ScalarTest, TanDoubleFirstOrder) { test_tan<double, false>(1e-12); }
+TEST(ScalarTest, TanLongDoubleFirstOrder) { test_tan<long double, false>(1e-12); }
+TEST(ScalarTest, TanFloatSecondOrder) { test_tan<float, true>(1e-4f); }
+TEST(ScalarTest, TanDoubleSecondOrder) { test_tan<double, true>(1e-12); }
+TEST(ScalarTest, TanLongDoubleSecondOrder) { test_tan<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, TanDoubleFirstOrderDynamic) { test_tan<double, false, true>(1e-12); }
+TEST(ScalarTest, TanDoubleSecondOrderDynamic) { test_tan<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_asin(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const auto f = asin(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = asin(a);
     ASSERT_NEAR(f.val, std::asin(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 3.4641, 1e-4);
     if constexpr (with_hessian)
@@ -499,12 +614,16 @@ TEST(ScalarTest, ASinFloatSecondOrder) { test_asin<float, true>(1e-4f); }
 TEST(ScalarTest, ASinDoubleSecondOrder) { test_asin<double, true>(1e-12); }
 TEST(ScalarTest, ASinLongDoubleSecondOrder) { test_asin<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ASinDoubleFirstOrderDynamic) { test_asin<double, false, true>(1e-12); }
+TEST(ScalarTest, ASinDoubleSecondOrderDynamic) { test_asin<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_acos(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const auto f = acos(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = acos(a);
     ASSERT_NEAR(f.val, std::acos(0.5), _eps);
     ASSERT_NEAR(f.grad(0), -3.4641, 1e-4);
     if constexpr (with_hessian)
@@ -521,12 +640,16 @@ TEST(ScalarTest, ACosFloatSecondOrder) { test_acos<float, true>(1e-4f); }
 TEST(ScalarTest, ACosDoubleSecondOrder) { test_acos<double, true>(1e-12); }
 TEST(ScalarTest, ACosLongDoubleSecondOrder) { test_acos<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ACosDoubleFirstOrderDynamic) { test_asin<double, false, true>(1e-12); }
+TEST(ScalarTest, ACosDoubleSecondOrderDynamic) { test_asin<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atan(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const auto f = atan(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = atan(a);
     ASSERT_NEAR(f.val, std::atan(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 2.4, _eps);
     if constexpr (with_hessian)
@@ -543,12 +666,16 @@ TEST(ScalarTest, ATanFloatSecondOrder) { test_atan<float, true>(1e-4f); }
 TEST(ScalarTest, ATanDoubleSecondOrder) { test_atan<double, true>(1e-12); }
 TEST(ScalarTest, ATanLongDoubleSecondOrder) { test_atan<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ATanDoubleFirstOrderDynamic) { test_atan<double, false, true>(1e-12); }
+TEST(ScalarTest, ATanDoubleSecondOrderDynamic) { test_atan<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_sinh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = sinh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sinh(a);
     ASSERT_NEAR(f.val, std::sinh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::cosh(4.0), _eps);
     if constexpr (with_hessian)
@@ -565,12 +692,16 @@ TEST(ScalarTest, SinhFloatSecondOrder) { test_sinh<float, true>(1e-4f); }
 TEST(ScalarTest, SinhDoubleSecondOrder) { test_sinh<double, true>(1e-12); }
 TEST(ScalarTest, SinhLongDoubleSecondOrder) { test_sinh<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, SinhDoubleFirstOrderDynamic) { test_sinh<double, false, true>(1e-12); }
+TEST(ScalarTest, SinhDoubleSecondOrderDynamic) { test_sinh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_cosh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = cosh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = cosh(a);
     ASSERT_NEAR(f.val, std::cosh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::sinh(4.0), _eps);
     if constexpr (with_hessian)
@@ -587,12 +718,16 @@ TEST(ScalarTest, CoshFloatSecondOrder) { test_cosh<float, true>(1e-4f); }
 TEST(ScalarTest, CoshDoubleSecondOrder) { test_cosh<double, true>(1e-12); }
 TEST(ScalarTest, CoshLongDoubleSecondOrder) { test_cosh<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, CoshDoubleFirstOrderDynamic) { test_cosh<double, false, true>(1e-12); }
+TEST(ScalarTest, CoshDoubleSecondOrderDynamic) { test_cosh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_tanh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = tanh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = tanh(a);
     ASSERT_NEAR(f.val, std::tanh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / sqr(std::cosh(4.0)), _eps);
     if constexpr (with_hessian)
@@ -602,19 +737,23 @@ void test_tanh(const PassiveT _eps)
     }
 }
 
-TEST(ScalarTest, PassiveTanhFloatFirstOrder) { test_tanh<float, false>(1e-4f); }
-TEST(ScalarTest, PassiveTanhDoubleFirstOrder) { test_tanh<double, false>(1e-12); }
-TEST(ScalarTest, PassiveTanhLongDoubleFirstOrder) { test_tanh<long double, false>(1e-12); }
-TEST(ScalarTest, PassiveTanhFloatSecondOrder) { test_tanh<float, true>(1e-4f); }
-TEST(ScalarTest, PassiveTanhDoubleSecondOrder) { test_tanh<double, true>(1e-12); }
-TEST(ScalarTest, PassiveTanhLongDoubleSecondOrder) { test_tanh<long double, true>(1e-12); }
+TEST(ScalarTest, TanhFloatFirstOrder) { test_tanh<float, false>(1e-4f); }
+TEST(ScalarTest, TanhDoubleFirstOrder) { test_tanh<double, false>(1e-12); }
+TEST(ScalarTest, TanhLongDoubleFirstOrder) { test_tanh<long double, false>(1e-12); }
+TEST(ScalarTest, TanhFloatSecondOrder) { test_tanh<float, true>(1e-4f); }
+TEST(ScalarTest, TanhDoubleSecondOrder) { test_tanh<double, true>(1e-12); }
+TEST(ScalarTest, TanhLongDoubleSecondOrder) { test_tanh<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, TanhDoubleFirstOrderDynamic) { test_tanh<double, false, true>(1e-12); }
+TEST(ScalarTest, TanhDoubleSecondOrderDynamic) { test_tanh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_asinh(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const auto f = asinh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = asinh(a);
     ASSERT_NEAR(f.val, std::asinh(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 2.68328, 1e-5);
     if constexpr (with_hessian)
@@ -631,12 +770,16 @@ TEST(ScalarTest, ASinhFloatSecondOrder) { test_asinh<float, true>(1e-4f); }
 TEST(ScalarTest, ASinhDoubleSecondOrder) { test_asinh<double, true>(1e-12); }
 TEST(ScalarTest, ASinhLongDoubleSecondOrder) { test_asinh<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ASinhDoubleFirstOrderDynamic) { test_asinh<double, false, true>(1e-12); }
+TEST(ScalarTest, ASinhDoubleSecondOrderDynamic) { test_asinh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_acosh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const auto f = acosh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = acosh(a);
     ASSERT_NEAR(f.val, std::acosh(4), _eps);
     ASSERT_NEAR(f.grad(0), std::sqrt(3.0 / 5.0), _eps);
     if constexpr (with_hessian)
@@ -653,12 +796,16 @@ TEST(ScalarTest, ACoshFloatSecondOrder) { test_acosh<float, true>(1e-4f); }
 TEST(ScalarTest, ACoshDoubleSecondOrder) { test_acosh<double, true>(1e-12); }
 TEST(ScalarTest, ACoshLongDoubleSecondOrder) { test_acosh<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, ACoshDoubleFirstOrderDynamic) { test_acosh<double, false, true>(1e-12); }
+TEST(ScalarTest, ACoshDoubleSecondOrderDynamic) { test_acosh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atanh(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const auto f = atanh(a);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
+    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = atanh(a);
     ASSERT_NEAR(f.val, std::atanh(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 4.0, _eps);
     if constexpr (with_hessian)
@@ -675,13 +822,18 @@ TEST(ScalarTest, ATanhFloatSecondOrder) { test_atanh<float, true>(1e-4f); }
 TEST(ScalarTest, ATanhDoubleSecondOrder) { test_atanh<double, true>(1e-12); }
 TEST(ScalarTest, ATanhLongDoubleSecondOrder) { test_atanh<long double, true>(1e-12); }
 
-template <typename PassiveT>
+TEST(ScalarTest, ATanhDoubleFirstOrderDynamic) { test_atanh<double, false, true>(1e-12); }
+TEST(ScalarTest, ATanhDoubleSecondOrderDynamic) { test_atanh<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool dynamic = false>
 void test_isnan_isinf()
 {
-    TinyAD::Scalar<1, PassiveT> a = 0.0;
-    TinyAD::Scalar<1, PassiveT> b = INFINITY;
-    TinyAD::Scalar<1, PassiveT> c = -INFINITY;
-    TinyAD::Scalar<1, PassiveT> d = NAN;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    using ADouble = TinyAD::Scalar<dim, PassiveT>;
+    const ADouble a = ADouble::make_passive(0.0, 1);
+    const ADouble b = ADouble::make_passive(INFINITY, 1);
+    const ADouble c = ADouble::make_passive(-INFINITY, 1);
+    const ADouble d = ADouble::make_passive(NAN, 1);
     ASSERT_EQ(isnan(a), false);
     ASSERT_EQ(isnan(b), false);
     ASSERT_EQ(isnan(c), false);
@@ -700,13 +852,16 @@ TEST(ScalarTest, IsnanIsinfFloat) { test_isnan_isinf<float>(); }
 TEST(ScalarTest, IsnanIsinfDouble) { test_isnan_isinf<double>(); }
 TEST(ScalarTest, IsnanIsinfLongDouble) { test_isnan_isinf<long double>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, IsnanIsinfDoubleDynamic) { test_isnan_isinf<double, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_plus()
 {
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a + b;
@@ -771,13 +926,17 @@ TEST(ScalarTest, PlusFloatSecondOrder) { test_plus<float, true>(); }
 TEST(ScalarTest, PlusDoubleSecondOrder) { test_plus<double, true>(); }
 TEST(ScalarTest, PlusLongDoubleSecondOrder) { test_plus<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, PlusDoubleFirstOrderDynamic) { test_plus<double, false, true>(); }
+TEST(ScalarTest, PlusDoubleSecondOrderDynamic) { test_plus<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_minus()
 {
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a - b;
@@ -842,13 +1001,17 @@ TEST(ScalarTest, MinusFloatSecondOrder) { test_minus<float, true>(); }
 TEST(ScalarTest, MinusDoubleSecondOrder) { test_minus<double, true>(); }
 TEST(ScalarTest, MinusLongDoubleSecondOrder) { test_minus<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, MinusDoubleFirstOrderDynamic) { test_minus<double, false, true>(); }
+TEST(ScalarTest, MinusDoubleSecondOrderDynamic) { test_minus<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_mult()
 {
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a * b;
@@ -913,13 +1076,17 @@ TEST(ScalarTest, MultFloatSecondOrder) { test_mult<float, true>(); }
 TEST(ScalarTest, MultDoubleSecondOrder) { test_mult<double, true>(); }
 TEST(ScalarTest, MultLongDoubleSecondOrder) { test_mult<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, MultDoubleFirstOrderDynamic) { test_mult<double, false, true>(); }
+TEST(ScalarTest, MultDoubleSecondOrderDynamic) { test_mult<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_div()
 {
     // a(x) = x^3 - x^2 + 1 at x=1
     // b(x) = x^2 + x + 2 at x=1
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> b(4.0, 3.0, 2.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> b(4.0, 3.0, 2.0);
 
     {   // Test const operator
         const auto f = a / b;
@@ -984,13 +1151,18 @@ TEST(ScalarTest, DivFloatSecondOrder) { test_div<float, true>(); }
 TEST(ScalarTest, DivDoubleSecondOrder) { test_div<double, true>(); }
 TEST(ScalarTest, DivLongDoubleSecondOrder) { test_div<long double, true>(); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, DivDoubleFirstOrderDynamic) { test_div<double, false, true>(); }
+TEST(ScalarTest, DivDoubleSecondOrderDynamic) { test_div<double, true, true>(); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atan2_const(const PassiveT _eps)
 {
     auto test = [&] (const auto _x, const auto _y)
     {
-        TinyAD::Scalar<2, PassiveT, with_hessian> x(_x, 0);
-        TinyAD::Scalar<2, PassiveT, with_hessian> y(_y, 1);
+        constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+        using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+        ADouble x = ADouble::make_active(_x, 0, 2);
+        ADouble y = ADouble::make_active(_y, 1, 2);
         const auto f = atan2(y, x);
         ASSERT_NEAR(f.val, std::atan2(y.val, x.val), _eps);
         ASSERT_NEAR(f.grad(0), -_y / (sqr(_x) + sqr(_y)), _eps);
@@ -1021,13 +1193,18 @@ TEST(ScalarTest, Atan2ConstFloatSecondOrder) { test_atan2_const<float, true>(1e-
 TEST(ScalarTest, Atan2ConstDoubleSecondOrder) { test_atan2_const<double, true>(1e-12); }
 TEST(ScalarTest, Atan2ConstLongDoubleSecondOrder) { test_atan2_const<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Atan2ConstDoubleFirstOrderDynamic) { test_atan2_const<double, false, true>(1e-12); }
+TEST(ScalarTest, Atan2ConstDoubleSecondOrderDynamic) { test_atan2_const<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atan2_1(const PassiveT _eps)
 {
     // Test atan2 with 1D curve parametrization
     auto test = [&] (const PassiveT _x)
     {
-        TinyAD::Scalar<1, PassiveT, with_hessian> x(_x, 0);
+        constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+        using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+        ADouble x = ADouble::make_active(_x, 0, 1);
 
         // Point on parabola
         auto y = sqr(x) - x - 1.0;
@@ -1071,14 +1248,19 @@ TEST(ScalarTest, Atan2_1FloatSecondOrder) { test_atan2_1<float, true>(1e-4f); }
 TEST(ScalarTest, Atan2_1DoubleSecondOrder) { test_atan2_1<double, true>(1e-12); }
 TEST(ScalarTest, Atan2_1LongDoubleSecondOrder) { test_atan2_1<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Atan2_1DoubleFirstOrderDynamic) { test_atan2_1<double, false, true>(1e-12); }
+TEST(ScalarTest, Atan2_1DoubleSecondOrderDynamic) { test_atan2_1<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atan2_2(const PassiveT _eps)
 {
     // Test atan2 with distorted 2D parametrization
     auto test = [&] (const PassiveT _x, const PassiveT _y)
     {
-        TinyAD::Scalar<2, PassiveT, with_hessian> x(_x, 0);
-        TinyAD::Scalar<2, PassiveT, with_hessian> y(_y, 1);
+        constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+        using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+        ADouble x = ADouble::make_active(_x, 0, 2);
+        ADouble y = ADouble::make_active(_y, 1, 2);
 
         // Point (a, b)
         auto a = 0.5 * sqr(x) - sqr(y) - y;
@@ -1133,12 +1315,17 @@ TEST(ScalarTest, Atan2_2FloatSecondOrder) { test_atan2_2<float, true>(1e-4f); }
 TEST(ScalarTest, Atan2_2DoubleSecondOrder) { test_atan2_2<double, true>(1e-12); }
 TEST(ScalarTest, Atan2_2LongDoubleSecondOrder) { test_atan2_2<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Atan2_2ConstDoubleFirstOrderDynamic) { test_atan2_2<double, false, true>(1e-12); }
+TEST(ScalarTest, Atan2_2ConstDoubleSecondOrderDynamic) { test_atan2_2<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_hypot(const PassiveT _eps)
 {
-    TinyAD::Scalar<2, PassiveT, with_hessian> x(3.0, 0);
-    TinyAD::Scalar<2, PassiveT, with_hessian> y(4.0, 1);
-    TinyAD::Scalar<2, PassiveT, with_hessian> z = hypot(x, y);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble x = ADouble::make_active(3.0, 0, 2);
+    ADouble y = ADouble::make_active(4.0, 1, 2);
+    ADouble z = hypot(x, y);
 
     ASSERT_NEAR(z.val, 5.0, _eps);
 
@@ -1161,12 +1348,18 @@ TEST(ScalarTest, HypotFloatSecondOrder) { test_hypot<float, true>(1e-7f); }
 TEST(ScalarTest, HypotDoubleSecondOrder) { test_hypot<double, true>(1e-12); }
 TEST(ScalarTest, HypotLongDoubleSecondOrder) { test_hypot<long double, true>(1e-14); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, HypotDoubleFirstOrderDynamic) { test_hypot<double, false, true>(1e-12); }
+TEST(ScalarTest, HypotDoubleSecondOrderDynamic) { test_hypot<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_div2d(const PassiveT _eps)
 {
     // wolframalpha.com/input/?i=x%5E2+%2F+y
-    TinyAD::Scalar<2, PassiveT, with_hessian> x(-1.0, 0);
-    TinyAD::Scalar<2, PassiveT, with_hessian> y(-0.5, 1);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble x = ADouble::make_active(-1.0, 0, 2);
+    ADouble y = ADouble::make_active(-0.5, 1, 2);
+
     const auto f = sqr(x) / y;
     ASSERT_NEAR(f.val, -2.0, _eps);
     ASSERT_NEAR(f.grad(0), 4.0, _eps);
@@ -1187,13 +1380,18 @@ TEST(ScalarTest, Div2dFloatSecondOrder) { test_div2d<float, true>(1e-4f); }
 TEST(ScalarTest, Div2dDoubleSecondOrder) { test_div2d<double, true>(1e-12); }
 TEST(ScalarTest, Div2dLongDoubleSecondOrder) { test_div2d<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Div2dDoubleFirstOrderDynamic) { test_div2d<double, false, true>(1e-12); }
+TEST(ScalarTest, Div2dDoubleSecondOrderDynamic) { test_div2d<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_div2d_2(const PassiveT _eps)
 {
     auto test = [&] (const PassiveT _x, const PassiveT _y)
     {
-        TinyAD::Scalar<2, PassiveT, with_hessian> x(_x, 0);
-        TinyAD::Scalar<2, PassiveT, with_hessian> y(_y, 1);
+        constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+        using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+        ADouble x = ADouble::make_active(_x, 0, 2);
+        ADouble y = ADouble::make_active(_y, 1, 2);
 
         auto a = 0.5 * sqr(x) - sqr(y) + 2.0 * x - y;
         auto b = -sqr(x - 2.0) - sqr(y - 3.0) + 1.0;
@@ -1239,12 +1437,17 @@ TEST(ScalarTest, Div2d_2FloatSecondOrder) { test_div2d_2<float, true>(1e-4f); }
 TEST(ScalarTest, Div2d_2DoubleSecondOrder) { test_div2d_2<double, true>(1e-12); }
 TEST(ScalarTest, Div2d_2LongDoubleSecondOrder) { test_div2d_2<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, Div2d_2DoubleFirstOrderDynamic) { test_div2d_2<double, false, true>(1e-12); }
+TEST(ScalarTest, Div2d_2DoubleSecondOrderDynamic) { test_div2d_2<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_plus_minus_mult_div_2d(const PassiveT _eps)
 {
     // wolframalpha.com/input/?i=%28%28x%5E2%2Bx%29+*+%28y%5E2-y%29+%2F+%28y-1%29%29+
-    TinyAD::Scalar<2, PassiveT, with_hessian> x(1.0, 0);
-    TinyAD::Scalar<2, PassiveT, with_hessian> y(1.5, 1);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble x = ADouble::make_active(1.0, 0, 2);
+    ADouble y = ADouble::make_active(1.5, 1, 2);
     const auto f = (sqr(x) + x) * (sqr(y) - y) / (y - 1.0);
     ASSERT_NEAR(f.val, 3.0, _eps);
     ASSERT_NEAR(f.grad(0), 4.5, _eps);
@@ -1262,12 +1465,16 @@ TEST(ScalarTest, PlusMinusMultDiv2dFloatSecondOrder) { test_plus_minus_mult_div_
 TEST(ScalarTest, PlusMinusMultDiv2dDoubleSecondOrder) { test_plus_minus_mult_div_2d<double, true>(1e-12); }
 TEST(ScalarTest, PlusMinusMultDiv2dLongDoubleSecondOrder) { test_plus_minus_mult_div_2d<long double, true>(1e-12); }
 
-template <typename PassiveT, bool with_hessian>
+TEST(ScalarTest, PlusMinusMultDiv2dDoubleFirstOrderDynamic) { test_plus_minus_mult_div_2d<double, false, true>(1e-12); }
+TEST(ScalarTest, PlusMinusMultDiv2dDoubleSecondOrderDynamic) { test_plus_minus_mult_div_2d<double, true, true>(1e-12); }
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_comparison()
 {
-    TinyAD::Scalar<1, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> b(1.0, 2.0, 8.0);
-    TinyAD::Scalar<1, PassiveT, with_hessian> c(2.0, 2.0, 8.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> b(1.0, 2.0, 8.0);
+    TinyAD::Scalar<dim, PassiveT, with_hessian> c(2.0, 2.0, 8.0);
 
     ASSERT_TRUE(a == b);
     ASSERT_TRUE(b == a);
@@ -1326,11 +1533,15 @@ TEST(ScalarTest, ComparisonFloatSecondOrder) { test_comparison<float, true>(); }
 TEST(ScalarTest, ComparisonDoubleSecondOrder) { test_comparison<double, true>(); }
 TEST(ScalarTest, ComparisonLongDoubleSecondOrder) { test_comparison<long double, true>(); }
 
-template <typename PassiveT>
+TEST(ScalarTest, ComparisonDoubleFirstOrderDynamic) { test_comparison<double, false, true>(); }
+TEST(ScalarTest, ComparisonDoubleSecondOrderDynamic) { test_comparison<double, true, true>(); }
+
+template <typename PassiveT, bool dynamic = false>
 void test_min_max()
 {
-    TinyAD::Scalar<1, PassiveT> a = 1.0;
-    TinyAD::Scalar<1, PassiveT> b = 2.0;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT> a(1.0, 2.0, 3.0);
+    TinyAD::Scalar<dim, PassiveT> b(2.0, 3.0, 4.0);
 
     ASSERT_EQ(min(a, b), a);
     ASSERT_EQ(min(a, b).grad, a.grad);
@@ -1353,10 +1564,13 @@ TEST(ScalarTest, MinMaxFloat) { test_min_max<float>(); }
 TEST(ScalarTest, MinMaxDouble) { test_min_max<double>(); }
 TEST(ScalarTest, MinMaxLongDouble) { test_min_max<long double>(); }
 
-template <typename PassiveT>
+TEST(ScalarTest, MinMaxDoubleDynamic) { test_min_max<double, true>(); }
+
+template <typename PassiveT, bool dynamic = false>
 void test_clamp()
 {
-    TinyAD::Scalar<1, PassiveT> x(4.0, 3.0, 2.0);
+    constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    TinyAD::Scalar<dim, PassiveT> x(4.0, 3.0, 2.0);
 
     ASSERT_EQ(clamp(x, 0.0, 5.0), x);
     ASSERT_EQ(clamp(x, 0.0, 5.0).grad, x.grad);
@@ -1375,14 +1589,18 @@ TEST(ScalarTest, ClampFloat) { test_clamp<float>(); }
 TEST(ScalarTest, ClampDouble) { test_clamp<double>(); }
 TEST(ScalarTest, ClampLongDouble) { test_clamp<long double>(); }
 
-template <typename PassiveT, bool with_hessian>
+//TEST(ScalarTest, ClampDoubleDynamic) { test_clamp<double, true>(); } // clamp(TinyAD::Scalar, double) not implemented in for dynamic mode
+
+template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_sphere()
 {
     // f: R^2 -> R^3
     // f(phi, psi) = (sin(phi) * cos(psi), sin(phi) * sin(psi), cos(phi))
-    TinyAD::Scalar<2, PassiveT, with_hessian> alpha((PassiveT)M_PI / 8.0, 0);
-    TinyAD::Scalar<2, PassiveT, with_hessian> beta((PassiveT)M_PI / 8.0, 1);
-    const auto f = Eigen::Matrix<TinyAD::Scalar<2, PassiveT, with_hessian>, 3, 1>(
+    constexpr int dim = dynamic ? Eigen::Dynamic : 2;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble alpha = ADouble::make_active((PassiveT)M_PI / 8.0, 0, 2);
+    ADouble beta = ADouble::make_active((PassiveT)M_PI / 8.0, 1, 2);
+    const auto f = Eigen::Matrix<ADouble, 3, 1>(
             sin(alpha) * cos(beta),
             sin(alpha) * sin(beta),
             cos(alpha));
@@ -1428,17 +1646,22 @@ TEST(ScalarTest, SphereFloatSecondOrder) { test_sphere<float, true>(); }
 TEST(ScalarTest, SphereDoubleSecondOrder) { test_sphere<double, true>(); }
 TEST(ScalarTest, SphereLongDoubleSecondOrder) { test_sphere<long double, true>(); }
 
-template <typename PassiveT>
+TEST(ScalarTest, SphereDoubleFirstOrderDynamic) { test_sphere<double, false, true>(); }
+TEST(ScalarTest, SphereDoubleSecondOrderDynamic) { test_sphere<double, true, true>(); }
+
+template <typename PassiveT, bool dynamic = false>
 void test_min_quadric()
 {
     // Variable vector in R^3
-    const auto x = TinyAD::Scalar<3, PassiveT>::make_active({ 0.0, 0.0, 0.0 });
+    constexpr int dim = dynamic ? Eigen::Dynamic : 3;
+    using ADouble = TinyAD::Scalar<dim, PassiveT>;
+    const Eigen::Vector<ADouble, dim> x = ADouble::make_active({ 0.0, 0.0, 0.0 });
 
     // Quadratic function
-    const auto f = sqr(x[0]) + 2.0 * sqr(x[1]) + 6.0 * sqr(x[2]) + x[0] - 2.0 * x[1] + 6.0 * x[2] + 10;
+    const ADouble f = sqr(x[0]) + 2.0 * sqr(x[1]) + 6.0 * sqr(x[2]) + x[0] - 2.0 * x[1] + 6.0 * x[2] + 10;
 
     // Solve for minimum
-    const auto x_min = -f.Hess.inverse() * f.grad;
+    const Eigen::Vector<PassiveT, dim> x_min = -f.Hess.inverse() * f.grad;
 
     ASSERT_NEAR(x_min.x(), -0.5, 1e-12);
     ASSERT_NEAR(x_min.y(), 0.5, 1e-12);
@@ -1449,35 +1672,40 @@ TEST(ScalarTest, MinQuadraticFloat) { test_min_quadric<float>(); }
 TEST(ScalarTest, MinQuadraticDouble) { test_min_quadric<double>(); }
 TEST(ScalarTest, MinQuadraticLongDouble) { test_min_quadric<long double>(); }
 
-template <typename PassiveT>
+TEST(ScalarTest, MinQuadraticDoubleDynamic) { test_min_quadric<double, true>(); }
+
+template <typename PassiveT, bool dynamic = false>
 void test_triangle_distortion()
 {
-    using ad = TinyAD::Scalar<6, PassiveT>;
+    constexpr int dim = dynamic ? Eigen::Dynamic : 6;
+    using ADouble = TinyAD::Scalar<dim, PassiveT>;
 
     // Passive rest-state triangle ar, br, cr
     const Eigen::Matrix<PassiveT, 2, 1> ar(1.0, 1.0);
     const Eigen::Matrix<PassiveT, 2, 1> br(2.0, 1.0);
     const Eigen::Matrix<PassiveT, 2, 1> cr(1.0, 2.0);
-    const auto Mr = TinyAD::col_mat(br - ar, cr - ar);
+    const Eigen::Matrix<PassiveT, 2, 2> Mr = TinyAD::col_mat(br - ar, cr - ar);
 
     // Active variable vector for vertex positions a, b, c
-    auto x = ad::make_active({
+    const Eigen::Vector<ADouble, dim> x = ADouble::make_active({
         10.0, 1.0,
         15.0, 3.0,
         2.0, 2.0,
     });
-    const Eigen::Matrix<ad, 2, 1> a(x[0], x[1]);
-    const Eigen::Matrix<ad, 2, 1> b(x[2], x[3]);
-    const Eigen::Matrix<ad, 2, 1> c(x[4], x[5]);
-    auto M = TinyAD::col_mat(b - a, c - a);
+    const Eigen::Matrix<ADouble, 2, 1> a(x[0], x[1]);
+    const Eigen::Matrix<ADouble, 2, 1> b(x[2], x[3]);
+    const Eigen::Matrix<ADouble, 2, 1> c(x[4], x[5]);
+    const Eigen::Matrix<ADouble, 2, 2> M = TinyAD::col_mat(b - a, c - a);
 
-    const auto J = M * Mr.inverse();
-    const auto E = J.squaredNorm() + J.inverse().squaredNorm();
+    const Eigen::Matrix<ADouble, 2, 2> J = M * Mr.inverse();
+    const ADouble E = J.squaredNorm() + J.inverse().squaredNorm();
     TINYAD_ASSERT_FINITE(E.val);
     TINYAD_ASSERT_FINITE_MAT(E.grad);
     TINYAD_ASSERT_FINITE_MAT(E.Hess);
 }
 
-TEST(ScalarTest, PassiveTriangleDistortionFloat) { test_triangle_distortion<float>(); }
-TEST(ScalarTest, PassiveTriangleDistortionDouble) { test_triangle_distortion<double>(); }
-TEST(ScalarTest, PassiveTriangleDistortionLongDouble) { test_triangle_distortion<long double>(); }
+TEST(ScalarTest, TriangleDistortionFloat) { test_triangle_distortion<float>(); }
+TEST(ScalarTest, TriangleDistortionDouble) { test_triangle_distortion<double>(); }
+TEST(ScalarTest, TriangleDistortionLongDouble) { test_triangle_distortion<long double>(); }
+
+//TEST(ScalarTest, TriangleDistortionDoubleDynamic) { test_triangle_distortion<double, true>(); } // Not available, b/c squaredNorm() needs default constructor "Scalar(0)" to be implemented, which is currently not the case in dynamic mode.
