@@ -102,7 +102,16 @@ struct Scalar
         if constexpr (!dynamic_mode_)
             return Scalar(_val);
         else
-            return known_derivatives(_val, GradType::Zero(_k_dynamic), HessType::Zero(_k_dynamic, _k_dynamic));
+        {
+            Scalar res;
+            res.val = _val;
+            res.grad = GradType::Zero(_k_dynamic);
+
+            if constexpr (with_hessian)
+                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
+
+            return res;
+        }
     }
 
     /// Initialize active variable with derivatives of size _k_dynamic.
@@ -115,8 +124,15 @@ struct Scalar
         else
         {
             TINYAD_ASSERT_L(_idx, _k_dynamic);
-            Scalar res = make_passive(_val, _k_dynamic);
+
+            Scalar res;
+            res.val = _val;
+            res.grad = GradType::Zero(_k_dynamic);
             res.grad[_idx] = 1.0;
+
+            if constexpr (with_hessian)
+                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
+
             return res;
         }
     }
