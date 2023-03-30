@@ -177,7 +177,7 @@ struct Scalar
         res.val = val;
         res.grad = grad * a.grad;
 
-        if constexpr(with_hessian)
+        if constexpr (with_hessian)
             res.Hess = Hess * a.grad * a.grad.transpose() + grad * a.Hess;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
@@ -189,7 +189,15 @@ struct Scalar
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        return chain(-a.val, -1.0, 0.0, a);
+
+        Scalar res;
+        res.val = -a.val;
+        res.grad = -a.grad;
+
+        if constexpr(with_hessian)
+            res.Hess = -a.Hess;
+
+        return res;
     }
 
     friend Scalar sqrt(
@@ -546,6 +554,34 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator+(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val += b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator+(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = b;
+        res.val += a;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator+=(
             const Scalar& b)
     {
@@ -558,6 +594,18 @@ struct Scalar
         this->grad += b.grad;
         if constexpr (with_hessian)
             this->Hess += b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        return *this;
+    }
+
+    Scalar& operator+=(
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        this->val += b;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -583,6 +631,38 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator-(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val -= b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator-(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res;
+        res.val = a - b.val;
+        res.grad = -b.grad;
+
+        if constexpr (with_hessian)
+            res.Hess = -b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator-=(
             const Scalar& b)
     {
@@ -593,8 +673,21 @@ struct Scalar
 
         this->val -= b.val;
         this->grad -= b.grad;
+
         if constexpr (with_hessian)
             this->Hess -= b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        return *this;
+    }
+
+    Scalar& operator-=(
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        this->val -= b;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -705,8 +798,51 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator/(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val /= b;
+        res.grad /= b;
+
+        if constexpr (with_hessian)
+            res.Hess /= b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator/(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res;
+        res.val = a / b.val;
+        res.grad = (-a / (b.val * b.val)) * b.grad;
+
+        if constexpr (with_hessian)
+            res.Hess = (-res.grad * b.grad.transpose() - b.grad * res.grad.transpose() - res.val * b.Hess) / b.val;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator/=(
             const Scalar& b)
+    {
+        *this = *this / b;
+        return *this;
+    }
+
+    Scalar& operator/=(
+            const PassiveT& b)
     {
         *this = *this / b;
         return *this;
@@ -761,12 +897,46 @@ struct Scalar
         return a.val == b.val;
     }
 
+    friend bool operator==(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val == b;
+    }
+
+    friend bool operator==(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a == b.val;
+    }
+
     friend bool operator!=(
             const Scalar& a,
             const Scalar& b)
     {
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val != b.val;
+    }
+
+    friend bool operator!=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val != b;
+    }
+
+    friend bool operator!=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a != b.val;
     }
 
     friend bool operator<(
@@ -779,6 +949,24 @@ struct Scalar
         return a.val < b.val;
     }
 
+    friend bool operator<(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val < b;
+    }
+
+    friend bool operator<(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a < b.val;
+    }
+
     friend bool operator<=(
             const Scalar& a,
             const Scalar& b)
@@ -787,6 +975,24 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val <= b.val;
+    }
+
+    friend bool operator<=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val <= b;
+    }
+
+    friend bool operator<=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a <= b.val;
     }
 
     friend bool operator>(
@@ -799,6 +1005,24 @@ struct Scalar
         return a.val > b.val;
     }
 
+    friend bool operator>(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val > b;
+    }
+
+    friend bool operator>(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a > b.val;
+    }
+
     friend bool operator>=(
             const Scalar& a,
             const Scalar& b)
@@ -807,6 +1031,24 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val >= b.val;
+    }
+
+    friend bool operator>=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val >= b;
+    }
+
+    friend bool operator>=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a >= b.val;
     }
 
     friend Scalar min(
