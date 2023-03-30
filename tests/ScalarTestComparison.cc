@@ -41,9 +41,10 @@ template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_comparison()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> b(1.0, 2.0, 8.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> c(2.0, 2.0, 8.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(1.0, 1.0, 4.0);
+    const ADouble b = ADouble::known_derivatives(1.0, 2.0, 8.0);
+    const ADouble c = ADouble::known_derivatives(2.0, 2.0, 8.0);
 
     ASSERT_TRUE(a == b);
     ASSERT_TRUE(b == a);
@@ -109,8 +110,9 @@ template <typename PassiveT, bool dynamic = false>
 void test_min_max()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT> a(1.0, 2.0, 3.0);
-    TinyAD::Scalar<dim, PassiveT> b(2.0, 3.0, 4.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT>;
+    const ADouble a = ADouble::known_derivatives(1.0, 2.0, 3.0);
+    const ADouble b = ADouble::known_derivatives(2.0, 3.0, 4.0);
 
     ASSERT_EQ(min(a, b), a);
     ASSERT_EQ(min(a, b).grad, a.grad);
@@ -139,7 +141,8 @@ template <typename PassiveT, bool dynamic = false>
 void test_clamp()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT> x(4.0, 3.0, 2.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT>;
+    const ADouble x = ADouble::known_derivatives(4.0, 3.0, 2.0);
 
     ASSERT_EQ(clamp(x, 0.0, 5.0), x);
     ASSERT_EQ(clamp(x, 0.0, 5.0).grad, x.grad);

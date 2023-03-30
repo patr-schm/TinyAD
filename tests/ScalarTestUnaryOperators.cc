@@ -13,8 +13,9 @@ void test_unary_minus()
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = -a;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = -a;
     ASSERT_EQ(f.val, -a.val);
     ASSERT_EQ(f.grad, -a.grad);
     if constexpr (with_hessian)
@@ -39,8 +40,9 @@ void test_sqrt()
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sqrt(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = sqrt(a);
     ASSERT_NEAR(f.val, 2.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0, 1e-12);
     if constexpr (with_hessian)
@@ -110,10 +112,11 @@ template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_fabs()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
 
     {   // a(x) = x^3 at x = 1
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = fabs(a);
+        const ADouble a = ADouble::known_derivatives(1.0, 3.0, 6.0);
+        const ADouble f = fabs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
         if constexpr (with_hessian)
@@ -124,8 +127,8 @@ void test_fabs()
     }
 
     {   // a(x) = x^3 at x = -1
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = fabs(a);
+        const ADouble a = ADouble::known_derivatives(-1.0, 3.0, -6.0);
+        const ADouble f = fabs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), -3.0, 1e-12);
         if constexpr (with_hessian)
@@ -150,10 +153,11 @@ template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_abs()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
 
     {   // a(x) = x^3 at x = 1
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 3.0, 6.0);
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = abs(a);
+        const ADouble a = ADouble::known_derivatives(1.0, 3.0, 6.0);
+        const ADouble f = abs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
         if constexpr (with_hessian)
@@ -164,8 +168,8 @@ void test_abs()
     }
 
     {   // a(x) = x^3 at x = -1
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> a(-1.0, 3.0, -6.0);
-        const TinyAD::Scalar<dim, PassiveT, with_hessian> f = abs(a);
+        const ADouble a = ADouble::known_derivatives(-1.0, 3.0, -6.0);
+        const ADouble f = abs(a);
         ASSERT_NEAR(f.val, 1.0, 1e-12);
         ASSERT_NEAR(f.grad(0), -3.0, 1e-12);
         if constexpr (with_hessian)
@@ -191,8 +195,9 @@ void test_exp(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = exp(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = exp(a);
     ASSERT_NEAR(f.val, std::exp(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::exp(4.0), _eps);
     if constexpr (with_hessian)
@@ -217,8 +222,9 @@ void test_log(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = log(a);
     ASSERT_NEAR(f.val, 2.0 * std::log(2.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0, _eps);
     if constexpr (with_hessian)
@@ -243,8 +249,9 @@ void test_log2(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log2(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = log2(a);
     ASSERT_NEAR(f.val, 2.0, _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(2.0), _eps);
     if constexpr (with_hessian)
@@ -269,8 +276,9 @@ void test_log10(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = log10(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = log10(a);
     ASSERT_NEAR(f.val, std::log10(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / 4.0 / std::log(10.0), _eps);
     if constexpr (with_hessian)
@@ -295,8 +303,9 @@ void test_sin(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sin(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = sin(a);
     ASSERT_NEAR(f.val, std::sin(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::cos(4.0), _eps);
     if constexpr (with_hessian)
@@ -321,8 +330,9 @@ void test_cos(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = cos(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = cos(a);
     ASSERT_NEAR(f.val, std::cos(4.0), _eps);
     ASSERT_NEAR(f.grad(0), -3.0 * std::sin(4.0), _eps);
     if constexpr (with_hessian)
@@ -347,8 +357,9 @@ void test_tan(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = tan(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = tan(a);
     ASSERT_NEAR(f.val, std::tan(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / sqr(std::cos(4.0)), _eps);
     if constexpr (with_hessian)
@@ -373,8 +384,9 @@ void test_asin(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = asin(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(0.5, 3.0, 2.0);
+    const ADouble f = asin(a);
     ASSERT_NEAR(f.val, std::asin(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 3.4641, 1e-4);
     if constexpr (with_hessian)
@@ -399,8 +411,9 @@ void test_acos(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = acos(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(0.5, 3.0, 2.0);
+    const ADouble f = acos(a);
     ASSERT_NEAR(f.val, std::acos(0.5), _eps);
     ASSERT_NEAR(f.grad(0), -3.4641, 1e-4);
     if constexpr (with_hessian)
@@ -425,8 +438,9 @@ void test_atan(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = atan(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(0.5, 3.0, 2.0);
+    const ADouble f = atan(a);
     ASSERT_NEAR(f.val, std::atan(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 2.4, _eps);
     if constexpr (with_hessian)
@@ -451,8 +465,9 @@ void test_sinh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = sinh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = sinh(a);
     ASSERT_NEAR(f.val, std::sinh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::cosh(4.0), _eps);
     if constexpr (with_hessian)
@@ -477,8 +492,9 @@ void test_cosh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = cosh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = cosh(a);
     ASSERT_NEAR(f.val, std::cosh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 * std::sinh(4.0), _eps);
     if constexpr (with_hessian)
@@ -503,8 +519,9 @@ void test_tanh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = tanh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = tanh(a);
     ASSERT_NEAR(f.val, std::tanh(4.0), _eps);
     ASSERT_NEAR(f.grad(0), 3.0 / sqr(std::cosh(4.0)), _eps);
     if constexpr (with_hessian)
@@ -529,8 +546,9 @@ void test_asinh(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = asinh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(0.5, 3.0, 2.0);
+    const ADouble f = asinh(a);
     ASSERT_NEAR(f.val, std::asinh(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 2.68328, 1e-5);
     if constexpr (with_hessian)
@@ -555,8 +573,9 @@ void test_acosh(const PassiveT _eps)
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = acosh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = acosh(a);
     ASSERT_NEAR(f.val, std::acosh(4), _eps);
     ASSERT_NEAR(f.grad(0), std::sqrt(3.0 / 5.0), _eps);
     if constexpr (with_hessian)
@@ -581,8 +600,9 @@ void test_atanh(const PassiveT _eps)
 {
     // a(x) = x^2 + x - 1.5 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(0.5, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = atanh(a);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(0.5, 3.0, 2.0);
+    const ADouble f = atanh(a);
     ASSERT_NEAR(f.val, std::atanh(0.5), _eps);
     ASSERT_NEAR(f.grad(0), 4.0, _eps);
     if constexpr (with_hessian)

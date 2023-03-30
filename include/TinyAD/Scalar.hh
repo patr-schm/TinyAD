@@ -66,19 +66,32 @@ struct Scalar
         grad(_idx) = 1.0;
     }
 
-    /// Variable with known derivatives
-    Scalar(PassiveT _val, const GradType& _grad, const HessType& _Hess)
-        : val(_val), grad(_grad), Hess(_Hess) { }
-
-    /// Variable with known derivatives (scalar case)
-    Scalar(PassiveT _val, PassiveT _grad, PassiveT _Hess)
-        : val(_val)
+    /// Initialize scalar with known derivatives
+    static Scalar known_derivatives(PassiveT _val, const GradType& _grad, const HessType& _Hess)
     {
-        static_assert(k == 1 || dynamic_mode_, "Constructor only available for scalar case.");
+        Scalar res;
+        res.val = _val;
+        res.grad = _grad;
 
-        grad = GradType::Constant(1, _grad);
         if constexpr (with_hessian)
-            Hess = HessType::Constant(1, 1, _Hess);
+            res.Hess = _Hess;
+
+        return res;
+    }
+
+    /// Initialize scalar with known derivatives (univariate case)
+    static Scalar known_derivatives(PassiveT _val, PassiveT _grad, PassiveT _Hess)
+    {
+        static_assert(k == 1 || dynamic_mode_, "Constructor only available for univariate case. Call overload with vector-valued arguments.");
+
+        Scalar res;
+        res.val = _val;
+        res.grad = GradType::Constant(1, _grad);
+
+        if constexpr (with_hessian)
+            res.Hess = HessType::Constant(1, 1, _Hess);
+
+        return res;
     }
 
     /// Initialize passive variable a.k.a. constant with zero derivatives of size _k_dynamic.
@@ -89,16 +102,7 @@ struct Scalar
         if constexpr (!dynamic_mode_)
             return Scalar(_val);
         else
-        {
-            Scalar res;
-            res.val = _val;
-            res.grad = GradType::Zero(_k_dynamic);
-
-            if constexpr (with_hessian)
-                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
-
-            return res;
-        }
+            return known_derivatives(_val, GradType::Zero(_k_dynamic), HessType::Zero(_k_dynamic, _k_dynamic));
     }
 
     /// Initialize active variable with derivatives of size _k_dynamic.
@@ -110,14 +114,9 @@ struct Scalar
             return Scalar(_val, _idx);
         else
         {
-            Scalar res;
-            res.val = _val;
-            res.grad = GradType::Zero(_k_dynamic);
+            TINYAD_ASSERT_L(_idx, _k_dynamic);
+            Scalar res = make_passive(_val, _k_dynamic);
             res.grad[_idx] = 1.0;
-
-            if constexpr (with_hessian)
-                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
-
             return res;
         }
     }

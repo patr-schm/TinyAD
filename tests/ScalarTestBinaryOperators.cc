@@ -13,8 +13,9 @@ void test_pow_int()
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = pow(a, 3);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = pow(a, 3);
     ASSERT_NEAR(f.val, 64.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 144.0, 1e-12);
     if constexpr (with_hessian)
@@ -39,8 +40,9 @@ void test_pow_real()
 {
     // a(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    const TinyAD::Scalar<dim, PassiveT, with_hessian> f = pow(a, PassiveT(3.0 / 2.0));
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    const ADouble f = pow(a, PassiveT(3.0 / 2.0));
     ASSERT_NEAR(f.val, 8.0, 1e-12);
     ASSERT_NEAR(f.grad(0), 9.0, 1e-12);
     if constexpr (with_hessian)
@@ -66,8 +68,9 @@ void test_plus()
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b = ADouble::known_derivatives(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a + b;
@@ -141,8 +144,9 @@ void test_minus()
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b = ADouble::known_derivatives(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a - b;
@@ -216,8 +220,9 @@ void test_mult()
     // a(x) = x^2 + x + 2 at x=1
     // b(x) = x^3 - x^2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT, with_hessian> a(4.0, 3.0, 2.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> b(0.0, 1.0, 4.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b = ADouble::known_derivatives(0.0, 1.0, 4.0);
 
     {   // Test const operator
         const auto f = a * b;
@@ -291,8 +296,9 @@ void test_div()
     // a(x) = x^3 - x^2 + 1 at x=1
     // b(x) = x^2 + x + 2 at x=1
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
-    TinyAD::Scalar<dim, PassiveT, with_hessian> a(1.0, 1.0, 4.0);
-    TinyAD::Scalar<dim, PassiveT, with_hessian> b(4.0, 3.0, 2.0);
+    using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(1.0, 1.0, 4.0);
+    ADouble b = ADouble::known_derivatives(4.0, 3.0, 2.0);
 
     {   // Test const operator
         const auto f = a / b;
