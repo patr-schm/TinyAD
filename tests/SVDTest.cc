@@ -16,7 +16,6 @@ void test_svd(
     using ADouble = TinyAD::Scalar<4, PassiveT, with_hessian>;
 
     Eigen::Matrix2<PassiveT> A_passive = Eigen::Matrix2<PassiveT>::Random(2, 2);
-    TINYAD_DEBUG_VAR(A_passive);
 
     Eigen::Matrix2<ADouble> A_active;
     A_active << ADouble(A_passive(0, 0), 0), ADouble(A_passive(0, 1), 1),
@@ -66,7 +65,6 @@ void test_closest_orthogonal(
     using ADouble = TinyAD::Scalar<4, PassiveT, with_hessian>;
 
     Eigen::Matrix2<PassiveT> A_passive = Eigen::Matrix2<PassiveT>::Random(2, 2);
-    TINYAD_DEBUG_VAR(A_passive);
 
     Eigen::Matrix2<ADouble> A_active;
     A_active << ADouble(A_passive(0, 0), 0), ADouble(A_passive(0, 1), 1),

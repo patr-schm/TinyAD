@@ -16,7 +16,7 @@ namespace TinyAD
 /**
   * Forward-differentiable scalar type with constructors for passive and active variables.
   * Each scalar carries its gradient and Hessian w.r.t. a variable vector.
-  *     k: Size of variable vector.
+  *     k: Size of variable vector at compile time. (Eigen::Dynamic is possible, but experimental and slow.)
   *     PassiveT: Internal floating point type, e.g. double.
   *     with_hessian: Set to false for gradient-only mode.
   */
@@ -25,10 +25,10 @@ struct Scalar
 {
     // Make template arguments available as members
     static constexpr int k_ = k;
-    using PassiveType = PassiveT;
     static constexpr bool with_hessian_ = with_hessian;
+    static constexpr bool dynamic_mode_ = k == Eigen::Dynamic;
 
-    // Determine Hessian data type at compile time. Use 0-by-0 if no Hessian required.
+    // Determine derivative data types at compile time. Use 0-by-0 if no Hessian required.
     using GradType = Eigen::Matrix<PassiveT, k, 1>;
     using HessType = typename std::conditional_t<
                 with_hessian,
@@ -49,50 +49,122 @@ struct Scalar
     /// Passive variable a.k.a. constant.
     /// Gradient and Hessian are zero.
     Scalar(PassiveT _val)
-        : val(_val) { }
+        : val(_val)
+    {
+        static_assert(!dynamic_mode_, "Implicit constructor is only available in static mode. Either choose k at runtime or use make_passive(val, k_dynamic).");
+    }
 
     /// Active variable.
     ///     _idx: index in variable vector
     Scalar(PassiveT _val, Eigen::Index _idx)
         : val(_val)
     {
+        static_assert(!dynamic_mode_, "This constructor is only available in static mode. Either choose k at compile time or use make_active(val, idx, k_dynamic).");
+
         TINYAD_ASSERT_GEQ(_idx, 0);
         TINYAD_ASSERT_L(_idx, k);
         grad(_idx) = 1.0;
     }
 
-    /// Variable with known derivatives
-    Scalar(PassiveT _val, const GradType& _grad, const HessType& _Hess)
-        : val(_val), grad(_grad), Hess(_Hess) { }
-
-    /// Variable with known derivatives (scalar case)
-    Scalar(PassiveT _val, PassiveT _grad, PassiveT _Hess)
-        : val(_val)
+    /// Initialize scalar with known derivatives
+    static Scalar known_derivatives(PassiveT _val, const GradType& _grad, const HessType& _Hess)
     {
-        static_assert(k == 1, "Constructor only available for scalar case.");
-        grad(0) = _grad;
+        Scalar res;
+        res.val = _val;
+        res.grad = _grad;
 
         if constexpr (with_hessian)
-            Hess(0, 0) = _Hess;
+            res.Hess = _Hess;
+
+        return res;
+    }
+
+    /// Initialize scalar with known derivatives (univariate case)
+    static Scalar known_derivatives(PassiveT _val, PassiveT _grad, PassiveT _Hess)
+    {
+        static_assert(k == 1 || dynamic_mode_, "Constructor only available for univariate case. Call overload with vector-valued arguments.");
+
+        Scalar res;
+        res.val = _val;
+        res.grad = GradType::Constant(1, _grad);
+
+        if constexpr (with_hessian)
+            res.Hess = HessType::Constant(1, 1, _Hess);
+
+        return res;
+    }
+
+    /// Initialize passive variable a.k.a. constant with zero derivatives of size _k_dynamic.
+    /// Only necessary in dynamic mode to pass derivative size at run time.
+    /// In static mode, use the Scalar(val) constructor instead.
+    static Scalar make_passive(PassiveT _val, Eigen::Index _k_dynamic)
+    {
+        if constexpr (!dynamic_mode_)
+            return Scalar(_val);
+        else
+        {
+            Scalar res;
+            res.val = _val;
+            res.grad = GradType::Zero(_k_dynamic);
+
+            if constexpr (with_hessian)
+                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
+
+            return res;
+        }
+    }
+
+    /// Initialize active variable with derivatives of size _k_dynamic.
+    /// Only necessary in dynamic mode to pass derivative size at run time.
+    /// In static mode, use the Scalar(val, idx) constructor instead.
+    static Scalar make_active(PassiveT _val, Eigen::Index _idx, Eigen::Index _k_dynamic)
+    {
+        if constexpr (!dynamic_mode_)
+            return Scalar(_val, _idx);
+        else
+        {
+            TINYAD_ASSERT_L(_idx, _k_dynamic);
+
+            Scalar res;
+            res.val = _val;
+            res.grad = GradType::Zero(_k_dynamic);
+            res.grad[_idx] = 1.0;
+
+            if constexpr (with_hessian)
+                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
+
+            return res;
+        }
     }
 
     /// Initialize an active variable vector of size k from given values.
     static Eigen::Matrix<Scalar, k, 1> make_active(
             const Eigen::Matrix<PassiveT, Eigen::Dynamic, 1>& _passive)
     {
-        TINYAD_ASSERT_EQ(_passive.size(), k);
-        Eigen::Matrix<Scalar, k, 1> active(k);
-        for (Eigen::Index i = 0; i < k; ++i)
-            active[i] = Scalar(_passive[i], i);
+        if constexpr (dynamic_mode_)
+        {
+            const Eigen::Index k_dynamic = _passive.size();
+            Eigen::Matrix<Scalar, Eigen::Dynamic, 1> active(k_dynamic);
+            for (Eigen::Index i = 0; i < k_dynamic; ++i)
+                active[i] = Scalar::make_active(_passive[i], i, k_dynamic);
 
-        return active;
+            return active;
+        }
+        else
+        {
+            TINYAD_ASSERT_EQ(_passive.size(), k);
+            Eigen::Matrix<Scalar, k, 1> active(k);
+            for (Eigen::Index i = 0; i < k; ++i)
+                active[i] = Scalar(_passive[i], i);
+
+            return active;
+        }
     }
 
     /// Initialize an active variable vector of size k from given values.
     static Eigen::Matrix<Scalar, k, 1> make_active(
             std::initializer_list<PassiveT> _passive)
     {
-        TINYAD_ASSERT_EQ(_passive.size(), k);
         return make_active(Eigen::Map<const Eigen::Matrix<PassiveT, Eigen::Dynamic, 1>>(_passive.begin(), _passive.size()));
     }
 
@@ -111,7 +183,7 @@ struct Scalar
         res.val = val;
         res.grad = grad * a.grad;
 
-        if constexpr(with_hessian)
+        if constexpr (with_hessian)
             res.Hess = Hess * a.grad * a.grad.transpose() + grad * a.Hess;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
@@ -123,7 +195,15 @@ struct Scalar
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        return chain(-a.val, -1.0, 0.0, a);
+
+        Scalar res;
+        res.val = -a.val;
+        res.grad = -a.grad;
+
+        if constexpr(with_hessian)
+            res.Hess = -a.Hess;
+
+        return res;
     }
 
     friend Scalar sqrt(
@@ -467,6 +547,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
 
         Scalar res;
         res.val = a.val + b.val;
@@ -479,16 +560,58 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator+(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val += b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator+(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = b;
+        res.val += a;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator+=(
             const Scalar& b)
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(this->grad.size(), b.grad.size());
+
         this->val += b.val;
         this->grad += b.grad;
         if constexpr (with_hessian)
             this->Hess += b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        return *this;
+    }
+
+    Scalar& operator+=(
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        this->val += b;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -501,6 +624,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
 
         Scalar res;
         res.val = a.val - b.val;
@@ -513,16 +637,63 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator-(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val -= b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator-(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res;
+        res.val = a - b.val;
+        res.grad = -b.grad;
+
+        if constexpr (with_hessian)
+            res.Hess = -b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator-=(
             const Scalar& b)
     {
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(this->grad.size(), b.grad.size());
+
         this->val -= b.val;
         this->grad -= b.grad;
+
         if constexpr (with_hessian)
             this->Hess -= b.Hess;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        return *this;
+    }
+
+    Scalar& operator-=(
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        this->val -= b;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -535,6 +706,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
 
         Scalar res;
         res.val = a.val * b.val;
@@ -619,6 +791,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
 
         Scalar res;
         res.val = a.val / b.val;
@@ -631,8 +804,51 @@ struct Scalar
         return res;
     }
 
+    friend Scalar operator/(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res = a;
+        res.val /= b;
+        res.grad /= b;
+
+        if constexpr (with_hessian)
+            res.Hess /= b;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
+    friend Scalar operator/(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+
+        Scalar res;
+        res.val = a / b.val;
+        res.grad = (-a / (b.val * b.val)) * b.grad;
+
+        if constexpr (with_hessian)
+            res.Hess = (-res.grad * b.grad.transpose() - b.grad * res.grad.transpose() - res.val * b.Hess) / b.val;
+
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
+        return res;
+    }
+
     Scalar& operator/=(
             const Scalar& b)
+    {
+        *this = *this / b;
+        return *this;
+    }
+
+    Scalar& operator/=(
+            const PassiveT& b)
     {
         *this = *this / b;
         return *this;
@@ -645,6 +861,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(y);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(x);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(y.grad.size(), x.grad.size());
 
         Scalar res;
         res.val = std::atan2(y.val, x.val);
@@ -671,6 +888,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
 
         return sqrt(a * a + b * b);
     }
@@ -685,12 +903,46 @@ struct Scalar
         return a.val == b.val;
     }
 
+    friend bool operator==(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val == b;
+    }
+
+    friend bool operator==(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a == b.val;
+    }
+
     friend bool operator!=(
             const Scalar& a,
             const Scalar& b)
     {
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val != b.val;
+    }
+
+    friend bool operator!=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val != b;
+    }
+
+    friend bool operator!=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a != b.val;
     }
 
     friend bool operator<(
@@ -703,6 +955,24 @@ struct Scalar
         return a.val < b.val;
     }
 
+    friend bool operator<(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val < b;
+    }
+
+    friend bool operator<(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a < b.val;
+    }
+
     friend bool operator<=(
             const Scalar& a,
             const Scalar& b)
@@ -711,6 +981,24 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val <= b.val;
+    }
+
+    friend bool operator<=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val <= b;
+    }
+
+    friend bool operator<=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a <= b.val;
     }
 
     friend bool operator>(
@@ -723,6 +1011,24 @@ struct Scalar
         return a.val > b.val;
     }
 
+    friend bool operator>(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val > b;
+    }
+
+    friend bool operator>(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a > b.val;
+    }
+
     friend bool operator>=(
             const Scalar& a,
             const Scalar& b)
@@ -731,6 +1037,24 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
         return a.val >= b.val;
+    }
+
+    friend bool operator>=(
+            const Scalar& a,
+            const PassiveT& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a.val >= b;
+    }
+
+    friend bool operator>=(
+            const PassiveT& a,
+            const Scalar& b)
+    {
+        TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
+        if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
+        return a >= b.val;
     }
 
     friend Scalar min(
@@ -784,7 +1108,7 @@ struct Scalar
     }
 
     // ///////////////////////////////////////////////////////////////////////////
-    // std::complex operators
+    // std::complex operators (just spell out and differentiate the real case)
     // ///////////////////////////////////////////////////////////////////////////
 
     friend std::complex<Scalar> operator+(
@@ -978,10 +1302,11 @@ struct Scalar
     // ///////////////////////////////////////////////////////////////////////////
 
     PassiveT val = 0.0;                // Scalar value of this (intermediate) variable.
-    GradType grad = GradType::Zero(k); // Gradient (first derivative) of val w.r.t. the active variable vector.
+    GradType grad = GradType::Zero(    // Gradient (first derivative) of val w.r.t. the active variable vector.
+                dynamic_mode_ ? 0 : k);
     HessType Hess = HessType::Zero(    // Hessian (second derivative) of val w.r.t. the active variable vector.
-                with_hessian ? k : 0,
-                with_hessian ? k : 0);
+                dynamic_mode_ ? 0 : (with_hessian ? k : 0),
+                dynamic_mode_ ? 0 : (with_hessian ? k : 0));
 };
 
 // ///////////////////////////////////////////////////////////////////////////
@@ -1010,10 +1335,10 @@ template <int k, int rows, int cols, typename ScalarT, bool with_hessian>
 Eigen::Matrix<ScalarT, rows, cols> to_passive(
         const Eigen::Matrix<Scalar<k, ScalarT, with_hessian>, rows, cols>& A)
 {
-    Eigen::Matrix<ScalarT, rows, cols> A_passive;
-    for (Eigen::Index i = 0; i < rows; ++i)
+    Eigen::Matrix<ScalarT, rows, cols> A_passive(A.rows(), A.cols());
+    for (Eigen::Index i = 0; i < A.rows(); ++i)
     {
-        for (Eigen::Index j = 0; j < cols; ++j)
+        for (Eigen::Index j = 0; j < A.cols(); ++j)
             A_passive(i, j) = A(i, j).val;
     }
 
@@ -1055,8 +1380,8 @@ struct NumTraits<TinyAD::Scalar<k, PassiveT, with_hessian>>
         IsSigned = 1,
         RequireInitialization = 1,
         ReadCost = 1,
-        AddCost = 1 + k + (with_hessian ? k * k : 0),
-        MulCost = 1 + k + (with_hessian ? k * k : 0),
+        AddCost = k == Eigen::Dynamic ? 1 : 1 + k + (with_hessian ? k * k : 0),
+        MulCost = k == Eigen::Dynamic ? 1 : 1 + k + (with_hessian ? k * k : 0),
     };
 };
 
