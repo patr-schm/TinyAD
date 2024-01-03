@@ -22,11 +22,11 @@ namespace TinyAD
  *      _solver: A solver that can be used over multiple iterations
  *               in case the sparsity pattern of _H_proj is constant.
  */
-template <typename PassiveT>
+template <typename PassiveT, typename SolverT>
 Eigen::VectorX<PassiveT> newton_direction(
         const Eigen::VectorX<PassiveT>& _g,
         const Eigen::SparseMatrix<PassiveT>& _H_proj,
-        LinearSolver<PassiveT>& _solver,
+        LinearSolver<PassiveT, SolverT>& _solver,
         const PassiveT& _w_identity = 0.0)
 {
     const Eigen::SparseMatrix<PassiveT> H_reg = _w_identity * identity<PassiveT>(_g.size()) + _H_proj;
@@ -73,12 +73,12 @@ Eigen::VectorX<PassiveT> newton_direction(
  * For problems with constant sparsity pattern, cache _solver
  * to benefit from pre-factorization.
  */
-template <typename PassiveT>
+template <typename PassiveT, typename SolverT>
 Eigen::VectorX<PassiveT> newton_direction_reduced_basis(
         const Eigen::VectorX<PassiveT>& _g,
         const Eigen::SparseMatrix<PassiveT>& _H_proj,
         const Eigen::SparseMatrix<PassiveT>& _B,
-        LinearSolver<PassiveT>& _solver,
+        LinearSolver<PassiveT, SolverT>& _solver,
         const PassiveT& _w_identity = 0.0)
 {
     const Eigen::Index n = _B.rows();

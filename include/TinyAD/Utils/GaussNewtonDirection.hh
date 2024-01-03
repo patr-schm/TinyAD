@@ -21,11 +21,11 @@ namespace TinyAD
  *      _solver: A solver that can be used over multiple iterations
  *               in case the sparsity pattern of J^T * J is constant.
  */
-template <typename PassiveT>
+template <typename PassiveT, typename SolverT>
 Eigen::VectorX<PassiveT> gauss_newton_direction(
         const Eigen::VectorX<PassiveT>& _r,
         const Eigen::SparseMatrix<PassiveT>& _J,
-        LinearSolver<PassiveT>& _solver,
+        LinearSolver<PassiveT, SolverT>& _solver,
         const PassiveT& _w_identity = 0.0)
 {
     const Eigen::SparseMatrix<PassiveT> JtJ_reg = _w_identity * identity<PassiveT>(_J.cols()) + _J.transpose() * _J;
