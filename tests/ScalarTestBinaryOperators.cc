@@ -15,13 +15,36 @@ void test_pow_int()
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
     using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
     const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
-    const ADouble f = pow(a, 3);
-    ASSERT_NEAR(f.val, 64.0, 1e-12);
-    ASSERT_NEAR(f.grad(0), 144.0, 1e-12);
-    if constexpr (with_hessian)
+
     {
-        ASSERT_NEAR(f.Hess(0, 0), 312.0, 1e-12);
-        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        const ADouble f = pow(a, 0);
+        ASSERT_NEAR(f.val, 1.0, 1e-12);
+        ASSERT_NEAR(f.grad(0), 0.0, 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), 0.0, 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
+    }
+    {
+        const ADouble f = pow(a, 1);
+        ASSERT_NEAR(f.val, a.val, 1e-12);
+        ASSERT_NEAR(f.grad(0), a.grad(0), 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), a.Hess(0, 0), 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
+    }
+    {
+        const ADouble f = pow(a, 3);
+        ASSERT_NEAR(f.val, 64.0, 1e-12);
+        ASSERT_NEAR(f.grad(0), 144.0, 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), 312.0, 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
     }
 }
 
@@ -42,13 +65,46 @@ void test_pow_real()
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
     using ADouble = TinyAD::Scalar<dim, PassiveT, with_hessian>;
     const ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
-    const ADouble f = pow(a, PassiveT(3.0 / 2.0));
-    ASSERT_NEAR(f.val, 8.0, 1e-12);
-    ASSERT_NEAR(f.grad(0), 9.0, 1e-12);
-    if constexpr (with_hessian)
+
     {
-        ASSERT_NEAR(f.Hess(0, 0), 75.0 / 8.0, 1e-12);
-        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        const ADouble f = pow(a, PassiveT(3.0 / 2.0));
+        ASSERT_NEAR(f.val, 8.0, 1e-12);
+        ASSERT_NEAR(f.grad(0), 9.0, 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), 75.0 / 8.0, 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
+    }
+    {
+        const ADouble f = pow(a, PassiveT(0.0));
+        ASSERT_NEAR(f.val, 1.0, 1e-12);
+        ASSERT_NEAR(f.grad(0), 0.0, 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), 0.0, 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
+    }
+    {
+        const ADouble f = pow(a, PassiveT(1.0));
+        ASSERT_NEAR(f.val, a.val, 1e-12);
+        ASSERT_NEAR(f.grad(0), a.grad(0), 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), a.Hess(0, 0), 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
+    }
+    {
+        const ADouble f = pow(a, PassiveT(3.0));
+        ASSERT_NEAR(f.val, 64.0, 1e-12);
+        ASSERT_NEAR(f.grad(0), 144.0, 1e-12);
+        if constexpr (with_hessian)
+        {
+            ASSERT_NEAR(f.Hess(0, 0), 312.0, 1e-12);
+            TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+        }
     }
 }
 
