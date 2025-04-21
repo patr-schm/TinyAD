@@ -243,20 +243,11 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
 
-        if ( e == 0 )
-        {
-            return chain((PassiveT)1.0,
-                        (PassiveT)0.0,
-                        (PassiveT)0.0,
-                        a);
-        }
-        else if ( e == 1 )
-        {
-            return chain( a.val,
-                        (PassiveT)1.0,
-                        (PassiveT)0.0,
-                        a);
-        }
+        // Handle a^0 and a^1 separately to avoid NaNs.
+        if (e == 0)
+            return chain((PassiveT)1.0, (PassiveT)0.0, (PassiveT)0.0, a);
+        else if (e == 1)
+            return chain(a.val, (PassiveT)1.0, (PassiveT)0.0, a);
         else
         {
             const PassiveT f2 = std::pow(a.val, e - 2);
@@ -268,10 +259,7 @@ struct Scalar
                         e * f1,
                         e * (e - 1) * f2,
                         a);
-
         }
-
-
     }
 
     friend Scalar pow(
