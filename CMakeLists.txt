@@ -1,7 +1,7 @@
 # This file is part of TinyAD and released under the MIT license.
 # Author: Patrick Schmidt
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 
 project(TinyAD)
 
@@ -59,7 +59,7 @@ if (${TINYAD_UNIT_TESTS})
         include(FetchContent)
         FetchContent_Declare(
             googletest
-            URL https://github.com/google/googletest/archive/71140c3ca7a87bb1b5b9c9f1500fea8858cce344.zip
+            URL https://github.com/google/googletest/archive/6910c9d9165801d8827d628cb72eb7ea9dd538c5.zip
         )
         # For Windows: Prevent overriding the parent project's compiler/linker settings
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
