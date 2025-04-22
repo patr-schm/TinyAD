@@ -24,6 +24,8 @@ struct ScalarObjectiveTermBase
 {
     virtual ~ScalarObjectiveTermBase() = default;
 
+    virtual Eigen::Index n_elements() const = 0;
+
     virtual PassiveT eval(
             const Eigen::VectorX<PassiveT>& _x) const = 0;
 
@@ -89,6 +91,11 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         eval_element_passive = _eval_element;
         eval_element_active_first_order = _eval_element;
         eval_element_active_second_order = _eval_element;
+    }
+
+    Eigen::Index n_elements() const override
+    {
+        return (Eigen::Index)element_handles.size();
     }
 
     PassiveT eval(

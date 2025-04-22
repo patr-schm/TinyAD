@@ -62,12 +62,36 @@ struct ScalarFunction
      * Add a set of elements (summands in the objective)
      * and a lambda function that evaluates each element.
      * Can be called multiple times to add different terms.
+     * 
+     * This is the **static** overload, where every element has the same valence,
+     * i.e. accesses the same number of variable handles.
      */
     template <
-            int element_valence,          // Number of variable handles accessed per element.
+            int... ElementValences,       // A single integer: The number of variable handles accessed per element.
             typename ElementHandleRangeT, // Type of element handles. E.g. int or OpenMesh::Face handle or other. Deduced automatically.
             typename EvalElementFunction> // Type of per-element eval function. Deduced automatically.
-    void add_elements(
+    std::enable_if_t<(sizeof...(ElementValences) == 1)>
+    add_elements(
+            const ElementHandleRangeT& _element_range,
+            EvalElementFunction _eval_element);
+
+    /**
+     * Add a set of elements (summands in the objective)
+     * and a lambda function that evaluates each element.
+     * Can be called multiple times to add different terms.
+     *
+     * This is the **"dynamic"** overload, where each element can access a different number of variable handles at run time.
+     * To still benefit from compile-time optimizations, this will internally instantiate the static version
+     * for a couple of different valences. This list of valences has to be provided as template arguments,
+     * e.g. add_elements<3, 4, 5>(...). Each run-time valence will be mappted to the exact or next higher static valence.
+     * The highest run-time valence may not exceed the highest static valence.
+     */
+    template <
+            int... ElementValences,       // List of common element valences. E.g. 5, 6, 7, 16 for meshes with max valence 16.
+            typename ElementHandleRangeT, // Type of element handles. E.g. int or OpenMesh::Face handle or other. Deduced automatically.
+            typename EvalElementFunction> // Type of per-element eval function. Deduced automatically.
+    std::enable_if_t<(sizeof...(ElementValences) >= 2)>
+    add_elements(
             const ElementHandleRangeT& _element_range,
             EvalElementFunction _eval_element);
 

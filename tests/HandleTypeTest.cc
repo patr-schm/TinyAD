@@ -11,6 +11,8 @@ struct CustomVariableHandle
     CustomVariableHandle(const int _idx)
         : idx(_idx) { }
 
+    bool operator==(const CustomVariableHandle& other) const { return idx == other.idx; }
+
     int idx = -1;
 };
 
@@ -19,6 +21,8 @@ struct CustomElementHandle
     CustomElementHandle() = default;
     CustomElementHandle(const int _idx)
         : idx(_idx) { }
+
+    bool operator==(const CustomElementHandle& other) const { return idx == other.idx; }
 
     int idx = -1;
 };
