@@ -2,6 +2,7 @@
  * This file is part of TinyAD and released under the MIT license.
  * Author: Patrick Schmidt
  */
+#define _SILENCE_NONFLOATING_COMPLEX_DEPRECATION_WARNING
 #include <gtest/gtest.h>
 #include <TinyAD/Scalar.hh>
 #include <complex>

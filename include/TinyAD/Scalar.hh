@@ -250,7 +250,7 @@ struct Scalar
             return chain(a.val, (PassiveT)1.0, (PassiveT)0.0, a);
         else
         {
-            const PassiveT f2 = std::pow(a.val, e - 2);
+            const PassiveT f2 = (PassiveT)std::pow(a.val, e - 2);
             const PassiveT f1 = f2 * a.val;
             const PassiveT f = f1 * a.val;
 
