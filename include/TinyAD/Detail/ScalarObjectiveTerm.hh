@@ -7,12 +7,9 @@
 #include <Eigen/SparseCore>
 #include <TinyAD/Scalar.hh>
 #include <TinyAD/Detail/Element.hh>
+#include <TinyAD/Detail/Parallel.hh>
 #include <TinyAD/Detail/EvalSettings.hh>
 #include <TinyAD/Utils/HessianProjection.hh>
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 namespace TinyAD
 {
@@ -102,13 +99,12 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         // Eval elements using plain double type
         std::vector<PassiveT> element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             // Call user code
             PassiveElementType element(element_handles[i_element], _x);
             element_results[i_element] = eval_element_passive(element);
-        }
+        });
 
         // Sum up results
         PassiveT f = 0.0;
@@ -130,8 +126,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         std::vector<ActiveFirstOrderElementType> elements(element_handles.size());
         std::vector<ActiveFirstOrderScalarType> element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
@@ -139,7 +134,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
 
             // Assert that derivatives are finite
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].grad);
-        }
+        });
 
         // Add to global f and g
         for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
@@ -167,8 +162,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         std::vector<ActiveSecondOrderElementType> elements(element_handles.size());
         std::vector<ActiveSecondOrderScalarType> element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
@@ -180,7 +174,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
             // Assert that derivatives are finite
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].grad);
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].Hess);
-        }
+        });
 
         // Add to global f, g and H
         for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)

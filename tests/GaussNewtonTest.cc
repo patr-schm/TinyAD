@@ -104,7 +104,7 @@ Eigen::VectorX<PassiveT> test_2d_deformation_gauss_newton(
     });
 
     // Assemble initial x vector
-    Eigen::VectorX<PassiveT> x = func_sos.x_from_data([&] (int v_idx) {
+    Eigen::VectorX<PassiveT> x = func_sos.x_from_data([&] (Eigen::Index v_idx) {
         return V.row(v_idx);
     });
 
@@ -147,7 +147,7 @@ Eigen::VectorX<PassiveT> test_2d_deformation_gauss_newton(
     }
 
     // Write final x vector to V
-    func_sos.x_to_data(x, [&] (int v_idx, const Eigen::Vector2<PassiveT>& p) {
+    func_sos.x_to_data(x, [&] (Eigen::Index v_idx, const Eigen::Vector2<PassiveT>& p) {
         V.row(v_idx) = p;
     });
 

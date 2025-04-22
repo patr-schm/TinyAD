@@ -1,7 +1,7 @@
 # This file is part of TinyAD and released under the MIT license.
 # Author: Patrick Schmidt
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 
 project(TinyAD)
 
@@ -16,6 +16,15 @@ endif()
 
 # Find OpenMP (optional)
 if (NOT TARGET OpenMP::OpenMP_CXX)
+    if(APPLE)
+        # Homebrew installs libomp here (keg-only)
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include")
+        set(OpenMP_C_LIB_NAMES "omp")
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include")
+        set(OpenMP_CXX_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY /opt/homebrew/opt/libomp/lib/libomp.dylib)
+    endif()
+
     find_package(OpenMP)
 endif()
 
@@ -59,7 +68,7 @@ if (${TINYAD_UNIT_TESTS})
         include(FetchContent)
         FetchContent_Declare(
             googletest
-            URL https://github.com/google/googletest/archive/71140c3ca7a87bb1b5b9c9f1500fea8858cce344.zip
+            URL https://github.com/google/googletest/archive/6910c9d9165801d8827d628cb72eb7ea9dd538c5.zip
         )
         # For Windows: Prevent overriding the parent project's compiler/linker settings
         set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)

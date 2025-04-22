@@ -7,12 +7,9 @@
 #include <Eigen/SparseCore>
 #include <TinyAD/Scalar.hh>
 #include <TinyAD/Detail/Element.hh>
+#include <TinyAD/Detail/Parallel.hh>
 #include <TinyAD/Detail/EvalSettings.hh>
 #include <TinyAD/Utils/HessianProjection.hh>
-
-#ifdef _OPENMP
-#include <omp.h>
-#endif
 
 namespace TinyAD
 {
@@ -105,14 +102,13 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         // Eval elements using plain double type
         Eigen::VectorX<PassiveT> result(n_outputs());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             // Call user code and write into segment of result vector
             PassiveElementType element(element_handles[i_element], _x);
             const Eigen::Index start_idx = outputs_per_element * i_element;
             result.segment(start_idx, outputs_per_element) = eval_element_passive(element);
-        }
+        });
 
         return result;
     }
@@ -128,8 +124,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         std::vector<ActiveFirstOrderElementType> elements(element_handles.size());
         std::vector<ActiveFirstOrderEvalElementReturnType> element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
 
@@ -139,7 +134,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
             // Assert that derivatives are finite
             for (Eigen::Index i_residual = 0; i_residual < element_results[i_element].size(); ++i_residual)
                 TINYAD_ASSERT_FINITE_MAT(element_results[i_element][i_residual].grad);
-        }
+        });
 
         // Count number of residuals and grow r
         Eigen::Index n_residuals = 0;
@@ -192,8 +187,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         std::vector<ActiveSecondOrderElementType> elements(element_handles.size());
         std::vector<ActiveSecondOrderEvalElementReturnType> element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
 
@@ -203,7 +197,7 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
             // Assert that derivatives are finite
             for (Eigen::Index i_residual = 0; i_residual < element_results[i_element].size(); ++i_residual)
                 TINYAD_ASSERT_FINITE_MAT(element_results[i_element][i_residual].grad);
-        }
+        });
 
         // Count number of residuals and grow r and H
         Eigen::Index n_residuals = 0;
@@ -267,14 +261,13 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
         // Eval elements using plain double type
         Eigen::VectorX<PassiveT> squared_element_results(element_handles.size());
 
-        #pragma omp parallel for schedule(static) num_threads(get_n_threads(settings))
-        for (Eigen::Index i_element = 0; i_element < (Eigen::Index)element_handles.size(); ++i_element)
+        parallel_for(element_handles.size(), settings, [&] (Eigen::Index i_element)
         {
             // Call user code and square results
             PassiveElementType element(element_handles[i_element], _x);
             PassiveEvalElementReturnType res = eval_element_passive(element);
             squared_element_results[i_element] = res.dot(res);
-        }
+        });
 
         // Add up squared results
         PassiveT result = 0.0;
