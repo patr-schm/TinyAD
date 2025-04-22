@@ -16,10 +16,22 @@ endif()
 
 # Find OpenMP (optional)
 if (NOT TARGET OpenMP::OpenMP_CXX)
+    if(APPLE)
+        # Homebrew installs libomp here (keg-only)
+        set(OpenMP_C_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include")
+        set(OpenMP_C_LIB_NAMES "omp")
+        set(OpenMP_CXX_FLAGS "-Xpreprocessor -fopenmp -I/opt/homebrew/opt/libomp/include")
+        set(OpenMP_CXX_LIB_NAMES "omp")
+        set(OpenMP_omp_LIBRARY /opt/homebrew/opt/libomp/lib/libomp.dylib)
+    endif()
+
     find_package(OpenMP)
 endif()
 
-if (NOT TARGET OpenMP::OpenMP_CXX)
+if (TARGET OpenMP::OpenMP_CXX)
+    add_compile_options(${OpenMP_CXX_FLAGS})
+    add_link_options(${OpenMP_CXX_FLAGS})
+else()
     message("WARNING: Building TinyAD without OpenMP!")
 endif()
 
