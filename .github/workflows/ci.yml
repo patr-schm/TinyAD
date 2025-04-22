@@ -37,6 +37,8 @@ jobs:
         run: |
           brew update
           brew install eigen libomp
+          echo "LDFLAGS=-L/opt/homebrew/opt/libomp/lib" >> $GITHUB_ENV
+          echo "CPPFLAGS=-I/opt/homebrew/opt/libomp/include" >> $GITHUB_ENV
       - name: Check out TinyAD
         uses: actions/checkout@v3
       - name: Configure
