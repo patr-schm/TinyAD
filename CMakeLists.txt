@@ -1,7 +1,7 @@
 # This file is part of TinyAD and released under the MIT license.
 # Author: Patrick Schmidt
 
-cmake_minimum_required(VERSION 3.9)
+cmake_minimum_required(VERSION 3.10)
 
 project(TinyAD)
 
