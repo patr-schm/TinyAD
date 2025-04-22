@@ -37,7 +37,7 @@ inline int get_n_threads(
 inline void parallel_for(
         const Eigen::Index n,
         const EvalSettings& settings,
-        std::function<void(int)> function_body)
+        std::function<void(Eigen::Index)> function_body)
 {
     std::mutex exception_mutex;
     std::optional<std::exception_ptr> exception_ptr;
