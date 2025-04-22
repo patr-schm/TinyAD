@@ -2,10 +2,18 @@
  * This file is part of TinyAD and released under the MIT license.
  * Author: Patrick Schmidt
  */
-#ifdef _OPENMP
-
 #include <gtest/gtest.h>
 #include <TinyAD/ScalarFunction.hh>
+
+TEST(OpenMPTest, OpenMPEnabled)
+{
+    // Check if OpenMP is enabled
+    #ifdef _OPENMP
+        SUCCEED() << "OpenMP is enabled.";
+    #else
+        FAIL() << "OpenMP is not enabled.";
+    #endif
+}
 
 TEST(OpenMPTest, ScalarFunctionParallel)
 {
@@ -20,5 +28,3 @@ TEST(OpenMPTest, ScalarFunctionParallel)
 
     func.eval_with_hessian_proj(Eigen::VectorXd::Zero(1));
 }
-
-#endif
