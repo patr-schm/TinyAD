@@ -28,10 +28,7 @@ if (NOT TARGET OpenMP::OpenMP_CXX)
     find_package(OpenMP)
 endif()
 
-if (TARGET OpenMP::OpenMP_CXX)
-    add_compile_options(${OpenMP_CXX_FLAGS})
-    add_link_options(${OpenMP_CXX_FLAGS})
-else()
+if (NOT TARGET OpenMP::OpenMP_CXX)
     message("WARNING: Building TinyAD without OpenMP!")
 endif()
 
