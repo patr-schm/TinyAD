@@ -19,20 +19,31 @@ namespace TinyAD
   *     k: Size of variable vector at compile time. (Eigen::Dynamic is possible, but experimental and slow.)
   *     PassiveT: Internal floating point type, e.g. double.
   *     with_hessian: Set to false for gradient-only mode.
+  *     hess_row_start, hess_col_start, hess_rows, hess_cols: Restrict Hessian computation to a sub-block
   */
-template <int k, typename PassiveT, bool with_hessian = true>
+template <int k, typename PassiveT, bool with_hessian = true, int hess_row_start = 0, int hess_col_start = 0, int hess_rows = k, int hess_cols = k>
 struct Scalar
 {
     // Make template arguments available as members
     static constexpr int k_ = k;
     static constexpr bool with_hessian_ = with_hessian;
     static constexpr bool dynamic_mode_ = k == Eigen::Dynamic;
+    static constexpr bool truncated_hessian_ = hess_row_start != 0 || hess_col_start != 0 || hess_rows != k || hess_cols != k;
 
-    // Determine derivative data types at compile time. Use 0-by-0 if no Hessian required.
+    // Validate template arguments
+    static_assert (k_ >= 0 || k_ == Eigen::Dynamic, "Variable dimension k has to be non-negative or Eigen::Dynamic.");
+    static_assert (!truncated_hessian_ || with_hessian_, "with_hessian needs to be true when restricting Hessian to a sub-block.");
+    static_assert (!(dynamic_mode_ && truncated_hessian_), "Truncated Hessian is not supported in dynamic mode.");
+    static_assert (!truncated_hessian_ || (hess_row_start >= 0 && hess_rows >= 0 && hess_row_start + hess_rows <= k), "Selected Hessian block has to be <= k-by-k");
+    static_assert (!truncated_hessian_ || (hess_col_start >= 0 && hess_cols >= 0 && hess_col_start + hess_cols <= k), "Selected Hessian block has to be <= k-by-k");
+
+    // Determine derivative data types at compile time.
+    // Use 0-by-0 if no Hessian required.
+    // Hessian might be truncated to a (rectangular) block smaller than k-by-k.
     using GradType = Eigen::Matrix<PassiveT, k, 1>;
     using HessType = typename std::conditional_t<
                 with_hessian,
-                Eigen::Matrix<PassiveT, k, k>,
+                Eigen::Matrix<PassiveT, hess_rows, hess_cols>,
                 Eigen::Matrix<PassiveT, 0, 0>>;
 
     // ///////////////////////////////////////////////////////////////////////////
@@ -169,8 +180,20 @@ struct Scalar
     }
 
     // ///////////////////////////////////////////////////////////////////////////
-    // Unary operators
+    // Convenience functions
     // ///////////////////////////////////////////////////////////////////////////
+
+    /// Compute outer product grad_a * grad_b^T, restricted to a specific block.
+    /// The result is a (possibly rectangular) matrix of size less or equal than k-by-k.
+    static auto outer(
+            const GradType& grad_a, // size k
+            const GradType& grad_b) // size k
+    {
+        if constexpr (truncated_hessian_)
+            return grad_a.template segment<hess_rows>(hess_row_start) * grad_b.template segment<hess_cols>(hess_col_start).transpose();
+        else
+            return grad_a * grad_b.transpose(); // This line is here to not break dynamic mode
+    }
 
     /// Apply chain rule to compute f(a(x)) and its derivatives.
     static Scalar chain(
@@ -184,11 +207,15 @@ struct Scalar
         res.grad = grad * a.grad;
 
         if constexpr (with_hessian)
-            res.Hess = Hess * a.grad * a.grad.transpose() + grad * a.Hess;
+            res.Hess = Hess * outer(a.grad, a.grad) + grad * a.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
     }
+
+    // ///////////////////////////////////////////////////////////////////////////
+    // Unary operators
+    // ///////////////////////////////////////////////////////////////////////////
 
     friend Scalar operator-(
             const Scalar& a)
@@ -230,7 +257,7 @@ struct Scalar
         res.grad = 2.0 * a.val * a.grad;
 
         if constexpr (with_hessian)
-            res.Hess = 2.0 * (a.val * a.Hess + a.grad * a.grad.transpose());
+            res.Hess = 2.0 * (a.val * a.Hess + outer(a.grad, a.grad)); // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -563,7 +590,7 @@ struct Scalar
         res.grad = a.grad + b.grad;
 
         if constexpr (with_hessian)
-            res.Hess = a.Hess + b.Hess;
+            res.Hess = a.Hess + b.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -608,7 +635,7 @@ struct Scalar
         this->val += b.val;
         this->grad += b.grad;
         if constexpr (with_hessian)
-            this->Hess += b.Hess;
+            this->Hess += b.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -640,7 +667,7 @@ struct Scalar
         res.grad = a.grad - b.grad;
 
         if constexpr (with_hessian)
-            res.Hess = a.Hess - b.Hess;
+            res.Hess = a.Hess - b.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -672,7 +699,7 @@ struct Scalar
         res.grad = -b.grad;
 
         if constexpr (with_hessian)
-            res.Hess = -b.Hess;
+            res.Hess = -b.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -690,7 +717,7 @@ struct Scalar
         this->grad -= b.grad;
 
         if constexpr (with_hessian)
-            this->Hess -= b.Hess;
+            this->Hess -= b.Hess; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         return *this;
@@ -734,8 +761,8 @@ struct Scalar
 //            res.Hess = res.Hess.template selfadjointView<Eigen::Lower>();
 //        }
 
-        if constexpr (with_hessian)
-            res.Hess = b.val * a.Hess + a.grad * b.grad.transpose() + b.grad * a.grad.transpose() + a.val * b.Hess;
+        if constexpr (with_hessian) // Might be a Hessian block only!
+            res.Hess = b.val * a.Hess + outer(a.grad, b.grad) + outer(b.grad, a.grad) + a.val * b.Hess;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -754,7 +781,7 @@ struct Scalar
         res.grad *= b;
 
         if constexpr (with_hessian)
-            res.Hess *= b;
+            res.Hess *= b; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -773,7 +800,7 @@ struct Scalar
         res.grad *= a;
 
         if constexpr (with_hessian)
-            res.Hess *= a;
+            res.Hess *= a; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -806,8 +833,8 @@ struct Scalar
         res.val = a.val / b.val;
         res.grad = (b.val * a.grad - a.val * b.grad) / (b.val * b.val);
 
-        if constexpr (with_hessian)
-            res.Hess = (a.Hess - res.grad * b.grad.transpose() - b.grad * res.grad.transpose() - res.val * b.Hess) / b.val;
+        if constexpr (with_hessian) // Might be a Hessian block only!
+            res.Hess = (a.Hess - outer(res.grad, b.grad) - outer(b.grad, res.grad) - res.val * b.Hess) / b.val;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -825,7 +852,7 @@ struct Scalar
         res.grad /= b;
 
         if constexpr (with_hessian)
-            res.Hess /= b;
+            res.Hess /= b; // Might be a Hessian block only!
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -842,8 +869,8 @@ struct Scalar
         res.val = a / b.val;
         res.grad = (-a / (b.val * b.val)) * b.grad;
 
-        if constexpr (with_hessian)
-            res.Hess = (-res.grad * b.grad.transpose() - b.grad * res.grad.transpose() - res.val * b.Hess) / b.val;
+        if constexpr (with_hessian) // Might be a Hessian block only!
+            res.Hess = (outer(-res.grad, b.grad) - outer(b.grad, res.grad) - res.val * b.Hess) / b.val;
 
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(res);
         return res;
@@ -881,7 +908,8 @@ struct Scalar
 
         if constexpr (with_hessian)
         {
-            const HessType du = x.val * y.Hess - y.val * x.Hess + y.grad * x.grad.transpose() - x.grad * y.grad.transpose();
+            // Might be a Hessian block only!
+            const HessType du = x.val * y.Hess - y.val * x.Hess + outer(y.grad, x.grad) - outer(x.grad, y.grad);
             const GradType dv = (PassiveT)2.0 * (x.val * x.grad + y.val * y.grad);
             res.Hess = (du - res.grad * dv.transpose()) / v;
         }
@@ -1313,9 +1341,9 @@ struct Scalar
     PassiveT val = 0.0;                // Scalar value of this (intermediate) variable.
     GradType grad = GradType::Zero(    // Gradient (first derivative) of val w.r.t. the active variable vector.
                 dynamic_mode_ ? 0 : k);
-    HessType Hess = HessType::Zero(    // Hessian (second derivative) of val w.r.t. the active variable vector.
-                dynamic_mode_ ? 0 : (with_hessian ? k : 0),
-                dynamic_mode_ ? 0 : (with_hessian ? k : 0));
+    HessType Hess = HessType::Zero(    // Hessian (second derivative) of val w.r.t. the active variable vector. Might be restricted to smaller (rectangular) block.
+                dynamic_mode_ ? 0 : (with_hessian ? hess_rows : 0),
+                dynamic_mode_ ? 0 : (with_hessian ? hess_cols : 0));
 };
 
 // ///////////////////////////////////////////////////////////////////////////
@@ -1355,12 +1383,12 @@ Eigen::Matrix<ScalarT, rows, cols> to_passive(
 }
 
 // ///////////////////////////////////////////////////////////////////////////
-// TinyAD::Scalar typedefs
+// TinyAD::Scalar typedefs: Float, Double, LongDouble
 // ///////////////////////////////////////////////////////////////////////////
 
-template <int k, bool with_hessian = true> using Float = Scalar<k, float, with_hessian>;
-template <int k, bool with_hessian = true> using Double = Scalar<k, double, with_hessian>;
-template <int k, bool with_hessian = true> using LongDouble = Scalar<k, long double, with_hessian>;
+template <int k, bool with_hessian = true, int hess_row_start = 0, int hess_col_start = 0, int hess_rows = k, int hess_cols = k> using Float = Scalar<k, float, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>;
+template <int k, bool with_hessian = true, int hess_row_start = 0, int hess_col_start = 0, int hess_rows = k, int hess_cols = k> using Double = Scalar<k, double, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>;
+template <int k, bool with_hessian = true, int hess_row_start = 0, int hess_col_start = 0, int hess_rows = k, int hess_cols = k> using LongDouble = Scalar<k, long double, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>;
 
 } // namespace TinyAD
 
@@ -1374,13 +1402,13 @@ namespace Eigen
  * See https://eigen.tuxfamily.org/dox/TopicCustomizing_CustomScalar.html
  * and https://eigen.tuxfamily.org/dox/structEigen_1_1NumTraits.html
  */
-template<int k, typename PassiveT, bool with_hessian>
-struct NumTraits<TinyAD::Scalar<k, PassiveT, with_hessian>>
+template<int k, typename PassiveT, bool with_hessian, int hess_row_start, int hess_col_start, int hess_rows, int hess_cols>
+struct NumTraits<TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>>
         : NumTraits<PassiveT>
 {
-    typedef TinyAD::Scalar<k, PassiveT, with_hessian> Real;
-    typedef TinyAD::Scalar<k, PassiveT, with_hessian> NonInteger;
-    typedef TinyAD::Scalar<k, PassiveT, with_hessian> Nested;
+    typedef TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols> Real;
+    typedef TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols> NonInteger;
+    typedef TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols> Nested;
 
     enum
     {
@@ -1398,16 +1426,16 @@ struct NumTraits<TinyAD::Scalar<k, PassiveT, with_hessian>>
  * Let Eigen know that binary operations between TinyAD::Scalar and T are allowed,
  * and that the return type is TinyAD::Scalar.
  */
-template<typename BinaryOp, int k, typename PassiveT, bool with_hessian>
-struct ScalarBinaryOpTraits<TinyAD::Scalar<k, PassiveT, with_hessian>, PassiveT, BinaryOp>
+template<typename BinaryOp, int k, typename PassiveT, bool with_hessian, int hess_row_start, int hess_col_start, int hess_rows, int hess_cols>
+struct ScalarBinaryOpTraits<TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>, PassiveT, BinaryOp>
 {
-    typedef TinyAD::Scalar<k, PassiveT, with_hessian> ReturnType;
+    typedef TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols> ReturnType;
 };
 
-template<typename BinaryOp, int k, typename PassiveT, bool with_hessian>
-struct ScalarBinaryOpTraits<PassiveT, TinyAD::Scalar<k, PassiveT, with_hessian>, BinaryOp>
+template<typename BinaryOp, int k, typename PassiveT, bool with_hessian, int hess_row_start, int hess_col_start, int hess_rows, int hess_cols>
+struct ScalarBinaryOpTraits<PassiveT, TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols>, BinaryOp>
 {
-    typedef TinyAD::Scalar<k, PassiveT, with_hessian> ReturnType;
+    typedef TinyAD::Scalar<k, PassiveT, with_hessian, hess_row_start, hess_col_start, hess_rows, hess_cols> ReturnType;
 };
 
 } // namespace Eigen

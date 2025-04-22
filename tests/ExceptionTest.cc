@@ -27,7 +27,7 @@ TEST(ExceptionTest, ExceptionTest)
     {
         auto [f, g, H] = func.eval_with_hessian_proj(Vector1(0.0));
     }
-    catch (const std::exception& ex)
+    catch (const std::exception&)
     {
         caught_first_exception = true;
     }
@@ -36,7 +36,7 @@ TEST(ExceptionTest, ExceptionTest)
     {
         auto [f, g, H] = func.eval_with_hessian_proj(Vector1(0.0));
     }
-    catch (const std::exception& ex)
+    catch (const std::exception&)
     {
         caught_second_exception = true;
     }
