@@ -36,7 +36,7 @@ jobs:
       - name: Install Dependencies
         run: |
           brew update
-          brew install eigen
+          brew install eigen libomp
       - name: Check out TinyAD
         uses: actions/checkout@v3
       - name: Configure
