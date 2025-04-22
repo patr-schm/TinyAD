@@ -1,5 +1,7 @@
-CMakeLists.txt.user
 *~
-build
 .vs
+.vscode
+build
+build-*/
 CMakeSettings.json
+CMakeLists.txt.user
