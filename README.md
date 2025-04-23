@@ -117,7 +117,7 @@ We implement one of the objective terms from [Geometric Modeling with Conical Me
 * Internal floating point types other than `double` can be used via `TinyAD::Scalar<k, T>`.
 * A gradient-only mode is availabe via `TinyAD::Scalar<k, T, false>`.
 * Use `to_passive(...)` to explicitly cast an active variable back to its scalar type without derivatives. E.g. to implement assertions or branching which should not be differentiated.
-* [Avoid using the `auto` keyword](https://eigen.tuxfamily.org/dox/TopicPitfalls.html#TopicPitfalls_auto_keyword) when working with Eigen expressions. This is a limitation of Eigen and can produce unexpected results due to the deleted temporary objects.
+* [Avoid using the `auto` keyword](https://eigen.tuxfamily.org/dox/TopicPitfalls.html#TopicPitfalls_auto_keyword) when working with Eigen expressions. This is a limitation of Eigen and can produce unexpected results due to deleted temporary objects.
 * Use e.g. `cos(...)` instead of `std::cos(...)`.
 * A common source for errors in the implementation of objective functions (per-element lambdas passed to `func.add_elements(...)`) are multiple return statements of different types. This may lead to a compiler error, but can be prevented by explicitly stating the correct return type via:  
 `func.add_elements<...>(..., [&] (auto& element) -> TINYAD_SCALAR_TYPE(element) { return ... });`
