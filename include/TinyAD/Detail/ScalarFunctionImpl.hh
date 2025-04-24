@@ -60,33 +60,6 @@ ScalarFunction(
     TINYAD_ASSERT_G(n_vars, 0);
 }
 
-namespace
-{
-
-template <int variable_dimension, int element_valence, typename PassiveT, typename VariableHandleT, typename ElementHandleT, typename EvalElementFunction>
-void add_objective_term(
-        const std::vector<ElementHandleT>& element_handles,
-        EvalElementFunction _eval_element,
-        std::vector<std::unique_ptr<ScalarObjectiveTerm<variable_dimension, element_valence, PassiveT, VariableHandleT, ElementHandleT>>>& objective_terms,
-        int& n_elements,
-        int n_vars,
-        const EvalSettings& settings)
-{
-    using ObjectiveType = ScalarObjectiveTerm<
-            variable_dimension,
-            element_valence,
-            PassiveT,
-            VariableHandleT,
-            ElementHandleT>;
-
-    objective_terms.push_back(std::make_unique<ObjectiveType>(
-            element_handles, _eval_element, n_vars, settings));
-
-    n_elements += element_handles.size();
-}
-
-}
-
 // Single valence version
 template <int variable_dimension, typename PassiveT, typename VariableHandleT>
 template <int... ElementValences, typename ElementHandleRangeT, typename EvalElementFunction>
@@ -107,7 +80,7 @@ add_elements(
     static_assert(std::is_same_v<decltype(std::declval<ElementHandle>() == std::declval<ElementHandle>()), bool>,
         "ElementHandle must have a == operator.");
 
-    TINYAD_DEBUG_OUT("Static version: Adding " << count(_element_range) << " elements of valence " << element_valence << ".");
+    // TINYAD_DEBUG_OUT("Static version: Adding " << count(_element_range) << " elements of valence " << element_valence << ".");
 
     // Copy handles into vector
     std::vector<ElementHandle> element_handles;
@@ -225,7 +198,7 @@ add_elements(
             constexpr int element_valence = ElementValences;
             const std::vector<ElementHandle>& element_handles = it->second;
 
-            TINYAD_DEBUG_OUT("Dynamic version: Adding " << element_handles.size() << " elements of valence " << element_valence << ".");
+            // TINYAD_DEBUG_OUT("Dynamic version: Adding " << element_handles.size() << " elements of valence " << element_valence << ".");
 
             // Store objective term
             using ObjectiveType = ScalarObjectiveTerm<
