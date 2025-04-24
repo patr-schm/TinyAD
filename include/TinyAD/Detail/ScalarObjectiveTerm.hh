@@ -10,6 +10,10 @@
 #include <TinyAD/Detail/Parallel.hh>
 #include <TinyAD/Detail/EvalSettings.hh>
 #include <TinyAD/Utils/HessianProjection.hh>
+#include <mutex>
+#include <memory>
+#include <functional>
+#include <type_traits>
 
 namespace TinyAD
 {
@@ -70,6 +74,45 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
     using ActiveFirstOrderEvalElementFunction = std::function<ActiveFirstOrderEvalElementReturnType(ActiveFirstOrderElementType&)>;
     using ActiveSecondOrderEvalElementFunction = std::function<ActiveSecondOrderEvalElementReturnType(ActiveSecondOrderElementType&)>;
 
+    // Non-template base class for storing the lambda
+    struct LambdaBase
+    {
+        virtual ~LambdaBase() = default;
+        virtual PassiveEvalElementFunction get_passive() = 0;
+        virtual ActiveFirstOrderEvalElementFunction get_active_first_order() = 0;
+        virtual ActiveSecondOrderEvalElementFunction get_active_second_order() = 0;
+    };
+
+    // Template implementation for specific lambda types
+    template <typename F>
+    struct LambdaImpl : LambdaBase
+    {
+        LambdaImpl(F&& f) : func(std::forward<F>(f)) {}
+
+        PassiveEvalElementFunction get_passive() override
+        {
+            return [this](PassiveElementType& element) -> PassiveEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        ActiveFirstOrderEvalElementFunction get_active_first_order() override
+        {
+            return [this](ActiveFirstOrderElementType& element) -> ActiveFirstOrderEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        ActiveSecondOrderEvalElementFunction get_active_second_order() override
+        {
+            return [this](ActiveSecondOrderElementType& element) -> ActiveSecondOrderEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        F func;
+    };
+
     template <typename EvalElementFunction>
     ScalarObjectiveTerm(
             const std::vector<ElementHandleT>& _element_handles,
@@ -85,16 +128,51 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
                 PassiveEvalElementReturnType>,
                 "Please make sure that the user-provided lambda function has the signature (const auto& element) -> TINYAD_SCALAR_TYPE(element)");
 
-        // Instantiate _eval_element() for passive and active scalar types
-        eval_element_passive = _eval_element;
-        eval_element_active_first_order = _eval_element;
-        eval_element_active_second_order = _eval_element;
+        // Store the original lambda for deferred instantiation
+        stored_lambda = std::make_unique<LambdaImpl<EvalElementFunction>>(std::forward<EvalElementFunction>(_eval_element));
+    }
+
+    // Move constructor
+    ScalarObjectiveTerm(ScalarObjectiveTerm&& other) noexcept
+        : n_vars_global(other.n_vars_global),
+          element_handles(std::move(other.element_handles)),
+          settings(other.settings),
+          stored_lambda(std::move(other.stored_lambda)),
+          eval_element_passive(std::move(other.eval_element_passive)),
+          eval_element_active_first_order(std::move(other.eval_element_active_first_order)),
+          eval_element_active_second_order(std::move(other.eval_element_active_second_order))
+    {
+    }
+
+    // Move assignment
+    ScalarObjectiveTerm& operator=(ScalarObjectiveTerm&& other) noexcept
+    {
+        if (this != &other)
+        {
+            // n_vars_global and settings are const, so we can't move them
+            element_handles = std::move(other.element_handles);
+            stored_lambda = std::move(other.stored_lambda);
+            eval_element_passive = std::move(other.eval_element_passive);
+            eval_element_active_first_order = std::move(other.eval_element_active_first_order);
+            eval_element_active_second_order = std::move(other.eval_element_active_second_order);
+        }
+        return *this;
     }
 
     PassiveT eval(
             const Eigen::VectorX<PassiveT>& _x) const override
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
+
+        // Lazy instantiation of passive evaluation function
+        if (!eval_element_passive)
+        {
+            std::lock_guard<std::mutex> lock(instantiation_mutex);
+            if (!eval_element_passive) // Double-check after acquiring lock
+            {
+                eval_element_passive = std::make_shared<PassiveEvalElementFunction>(stored_lambda->get_passive());
+            }
+        }
 
         // Eval elements using plain double type
         std::vector<PassiveT> element_results(element_handles.size());
@@ -103,7 +181,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code
             PassiveElementType element(element_handles[i_element], _x);
-            element_results[i_element] = eval_element_passive(element);
+            element_results[i_element] = (*eval_element_passive)(element);
         });
 
         // Sum up results
@@ -122,6 +200,17 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
         TINYAD_ASSERT_EQ(_g.size(), n_vars_global);
 
+        // Lazy instantiation of first-order evaluation function
+        if (!eval_element_active_first_order)
+        {
+            std::lock_guard<std::mutex> lock(instantiation_mutex);
+            if (!eval_element_active_first_order) // Double-check after acquiring lock
+            {
+                eval_element_active_first_order = std::make_shared<ActiveFirstOrderEvalElementFunction>(
+                    stored_lambda->get_active_first_order());
+            }
+        }
+
         // Eval elements using active scalar type
         std::vector<ActiveFirstOrderElementType> elements(element_handles.size());
         std::vector<ActiveFirstOrderScalarType> element_results(element_handles.size());
@@ -130,7 +219,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
-            element_results[i_element] = eval_element_active_first_order(elements[i_element]);
+            element_results[i_element] = (*eval_element_active_first_order)(elements[i_element]);
 
             // Assert that derivatives are finite
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].grad);
@@ -158,6 +247,17 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
         TINYAD_ASSERT_EQ(_g.size(), n_vars_global);
 
+        // Lazy instantiation of second-order evaluation function
+        if (!eval_element_active_second_order)
+        {
+            std::lock_guard<std::mutex> lock(instantiation_mutex);
+            if (!eval_element_active_second_order) // Double-check after acquiring lock
+            {
+                eval_element_active_second_order = std::make_shared<ActiveSecondOrderEvalElementFunction>(
+                    stored_lambda->get_active_second_order());
+            }
+        }
+
         // Eval elements using active scalar type
         std::vector<ActiveSecondOrderElementType> elements(element_handles.size());
         std::vector<ActiveSecondOrderScalarType> element_results(element_handles.size());
@@ -166,7 +266,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
-            element_results[i_element] = eval_element_active_second_order(elements[i_element]);
+            element_results[i_element] = (*eval_element_active_second_order)(elements[i_element]);
 
             if (_project_hessian)
                 project_positive_definite<n_element, PassiveT>(element_results[i_element].Hess, _projection_eps);
@@ -206,10 +306,16 @@ private:
     const std::vector<ElementHandleT> element_handles;
     const EvalSettings& settings;
 
-    // Instantiations of user-provided lambda
-    PassiveEvalElementFunction eval_element_passive;
-    ActiveFirstOrderEvalElementFunction eval_element_active_first_order;
-    ActiveSecondOrderEvalElementFunction eval_element_active_second_order;
+    // Storage for the original lambda
+    std::unique_ptr<LambdaBase> stored_lambda;
+
+    // Mutex for thread-safe lazy instantiation
+    mutable std::mutex instantiation_mutex;
+
+    // Lazy-instantiated function objects
+    mutable std::shared_ptr<PassiveEvalElementFunction> eval_element_passive;
+    mutable std::shared_ptr<ActiveFirstOrderEvalElementFunction> eval_element_active_first_order;
+    mutable std::shared_ptr<ActiveSecondOrderEvalElementFunction> eval_element_active_second_order;
 };
 
 }
