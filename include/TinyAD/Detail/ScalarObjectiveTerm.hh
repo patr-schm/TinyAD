@@ -10,10 +10,6 @@
 #include <TinyAD/Detail/Parallel.hh>
 #include <TinyAD/Detail/EvalSettings.hh>
 #include <TinyAD/Utils/HessianProjection.hh>
-#include <mutex>
-#include <memory>
-#include <functional>
-#include <type_traits>
 
 namespace TinyAD
 {
