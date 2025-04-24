@@ -137,10 +137,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         : n_vars_global(other.n_vars_global),
           element_handles(std::move(other.element_handles)),
           settings(other.settings),
-          stored_lambda(std::move(other.stored_lambda)),
-          eval_element_passive(std::move(other.eval_element_passive)),
-          eval_element_active_first_order(std::move(other.eval_element_active_first_order)),
-          eval_element_active_second_order(std::move(other.eval_element_active_second_order))
+          stored_lambda(std::move(other.stored_lambda))
     {
     }
 
@@ -152,9 +149,6 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
             // n_vars_global and settings are const, so we can't move them
             element_handles = std::move(other.element_handles);
             stored_lambda = std::move(other.stored_lambda);
-            eval_element_passive = std::move(other.eval_element_passive);
-            eval_element_active_first_order = std::move(other.eval_element_active_first_order);
-            eval_element_active_second_order = std::move(other.eval_element_active_second_order);
         }
         return *this;
     }
@@ -164,15 +158,8 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
 
-        // Lazy instantiation of passive evaluation function
-        if (!eval_element_passive)
-        {
-            std::lock_guard<std::mutex> lock(instantiation_mutex);
-            if (!eval_element_passive) // Double-check after acquiring lock
-            {
-                eval_element_passive = std::make_shared<PassiveEvalElementFunction>(stored_lambda->get_passive());
-            }
-        }
+        // Instantiate the passive evaluation function locally
+        auto eval_element_passive = stored_lambda->get_passive();
 
         // Eval elements using plain double type
         std::vector<PassiveT> element_results(element_handles.size());
@@ -181,7 +168,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code
             PassiveElementType element(element_handles[i_element], _x);
-            element_results[i_element] = (*eval_element_passive)(element);
+            element_results[i_element] = eval_element_passive(element);
         });
 
         // Sum up results
@@ -200,16 +187,8 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
         TINYAD_ASSERT_EQ(_g.size(), n_vars_global);
 
-        // Lazy instantiation of first-order evaluation function
-        if (!eval_element_active_first_order)
-        {
-            std::lock_guard<std::mutex> lock(instantiation_mutex);
-            if (!eval_element_active_first_order) // Double-check after acquiring lock
-            {
-                eval_element_active_first_order = std::make_shared<ActiveFirstOrderEvalElementFunction>(
-                    stored_lambda->get_active_first_order());
-            }
-        }
+        // Instantiate the first-order evaluation function locally
+        auto eval_element_active_first_order = stored_lambda->get_active_first_order();
 
         // Eval elements using active scalar type
         std::vector<ActiveFirstOrderElementType> elements(element_handles.size());
@@ -219,7 +198,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveFirstOrderElementType(element_handles[i_element], _x);
-            element_results[i_element] = (*eval_element_active_first_order)(elements[i_element]);
+            element_results[i_element] = eval_element_active_first_order(elements[i_element]);
 
             // Assert that derivatives are finite
             TINYAD_ASSERT_FINITE_MAT(element_results[i_element].grad);
@@ -247,16 +226,8 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
         TINYAD_ASSERT_EQ(_g.size(), n_vars_global);
 
-        // Lazy instantiation of second-order evaluation function
-        if (!eval_element_active_second_order)
-        {
-            std::lock_guard<std::mutex> lock(instantiation_mutex);
-            if (!eval_element_active_second_order) // Double-check after acquiring lock
-            {
-                eval_element_active_second_order = std::make_shared<ActiveSecondOrderEvalElementFunction>(
-                    stored_lambda->get_active_second_order());
-            }
-        }
+        // Instantiate the second-order evaluation function locally
+        auto eval_element_active_second_order = stored_lambda->get_active_second_order();
 
         // Eval elements using active scalar type
         std::vector<ActiveSecondOrderElementType> elements(element_handles.size());
@@ -266,7 +237,7 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
         {
             // Call user code, which initializes active variables via element.variables(...) and performs computations.
             elements[i_element] = ActiveSecondOrderElementType(element_handles[i_element], _x);
-            element_results[i_element] = (*eval_element_active_second_order)(elements[i_element]);
+            element_results[i_element] = eval_element_active_second_order(elements[i_element]);
 
             if (_project_hessian)
                 project_positive_definite<n_element, PassiveT>(element_results[i_element].Hess, _projection_eps);
@@ -308,14 +279,6 @@ private:
 
     // Storage for the original lambda
     std::unique_ptr<LambdaBase> stored_lambda;
-
-    // Mutex for thread-safe lazy instantiation
-    mutable std::mutex instantiation_mutex;
-
-    // Lazy-instantiated function objects
-    mutable std::shared_ptr<PassiveEvalElementFunction> eval_element_passive;
-    mutable std::shared_ptr<ActiveFirstOrderEvalElementFunction> eval_element_active_first_order;
-    mutable std::shared_ptr<ActiveSecondOrderEvalElementFunction> eval_element_active_second_order;
 };
 
 }
