@@ -13,7 +13,8 @@ TEST(DeferredLambdaTest, BasicFunctionalityScalar)
     auto func = TinyAD::scalar_function<2>(TinyAD::range(1));
     
     // Add a simple quadratic function
-    func.template add_elements<1>(TinyAD::range(1), [](auto& element) {
+    func.template add_elements<1>(TinyAD::range(1), [](auto& element)
+    {
         auto x = element.variables(0);
         return x[0] * x[0] + x[1] * x[1];
     });
@@ -47,7 +48,8 @@ TEST(DeferredLambdaTest, MoveSemanticsScalar)
     auto func1 = TinyAD::scalar_function<2>(TinyAD::range(1));
     
     // Add a simple quadratic function
-    func1.template add_elements<1>(TinyAD::range(1), [](auto& element) {
+    func1.template add_elements<1>(TinyAD::range(1), [](auto& element)
+    {
         auto x = element.variables(0);
         return x[0] * x[0] + x[1] * x[1];
     });
