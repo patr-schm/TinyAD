@@ -24,6 +24,7 @@ VectorFunction(VectorFunction&& _other)
     : settings(std::move(_other.settings)),
       n_vars(_other.n_vars),
       n_elements(_other.n_elements),
+      n_outputs(_other.n_outputs),
       variable_handles(std::move(_other.variable_handles)),
       objective_terms(std::move(_other.objective_terms))
 {
@@ -38,6 +39,7 @@ operator=(VectorFunction&& _other)
     settings = std::move(_other.settings);
     n_vars = _other.n_vars;
     n_elements = _other.n_elements;
+    n_outputs = _other.n_outputs;
     variable_handles = std::move(_other.variable_handles);
     objective_terms = std::move(_other.objective_terms);
     return *this;
