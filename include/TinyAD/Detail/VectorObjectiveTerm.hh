@@ -73,6 +73,48 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
     using ActiveFirstOrderEvalElementFunction = std::function<ActiveFirstOrderEvalElementReturnType(ActiveFirstOrderElementType&)>;
     using ActiveSecondOrderEvalElementFunction = std::function<ActiveSecondOrderEvalElementReturnType(ActiveSecondOrderElementType&)>;
 
+    // Base class for storing the type-erased user-provided lambda as a member of VectorObjectiveTerm.
+    // We use this pattern to only compile versions of the lambda that are actually called 
+    // by the user via eval_... functions.
+    struct LambdaBase
+    {
+        virtual ~LambdaBase() = default;
+        virtual PassiveEvalElementFunction get_passive() = 0;
+        virtual ActiveFirstOrderEvalElementFunction get_active_first_order() = 0;
+        virtual ActiveSecondOrderEvalElementFunction get_active_second_order() = 0;
+    };
+
+    // Subclass where F is the type-erased lambda function.
+    // Calling the get_...() functions actually compiles/instantiates the user-provided lambda.
+    template <typename F>
+    struct LambdaImpl : LambdaBase
+    {
+        LambdaImpl(F&& f) : func(std::forward<F>(f)) {}
+
+        PassiveEvalElementFunction get_passive() override
+        {
+            return [this](PassiveElementType& element) -> PassiveEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        ActiveFirstOrderEvalElementFunction get_active_first_order() override
+        {
+            return [this](ActiveFirstOrderElementType& element) -> ActiveFirstOrderEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        ActiveSecondOrderEvalElementFunction get_active_second_order() override
+        {
+            return [this](ActiveSecondOrderElementType& element) -> ActiveSecondOrderEvalElementReturnType {
+                return func(element);
+            };
+        }
+
+        F func;
+    };
+
     template <typename EvalElementFunction>
     VectorObjectiveTerm(
             const std::vector<ElementHandleT>& _element_handles,
@@ -88,16 +130,38 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
                 PassiveEvalElementReturnType>,
                 "Please make sure that the user-provided lambda function has the signature (const auto& element) -> TINYAD_VECTOR_TYPE(element)");
 
-        // Instantiate _eval_element() for passive and active scalar types
-        eval_element_passive = _eval_element;
-        eval_element_active_first_order = _eval_element;
-        eval_element_active_second_order = _eval_element;
+        // Store the user-provided lambda for deferred instantiation
+        type_erased_lambda = std::make_unique<LambdaImpl<EvalElementFunction>>(std::forward<EvalElementFunction>(_eval_element));
+    }
+
+    // Move constructor
+    VectorObjectiveTerm(VectorObjectiveTerm&& other) noexcept
+        : n_vars_global(other.n_vars_global),
+          element_handles(std::move(other.element_handles)),
+          settings(other.settings),
+          type_erased_lambda(std::move(other.type_erased_lambda))
+    {
+    }
+
+    // Move assignment
+    VectorObjectiveTerm& operator=(VectorObjectiveTerm&& other) noexcept
+    {
+        if (this != &other)
+        {
+            // n_vars_global and settings are const, so we can't move them
+            element_handles = std::move(other.element_handles);
+            type_erased_lambda = std::move(other.type_erased_lambda);
+        }
+        return *this;
     }
 
     Eigen::VectorX<PassiveT> eval(
             const Eigen::VectorX<PassiveT>& _x) const override
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
+
+        // Instantiate the passive evaluation function
+        auto eval_element_passive = type_erased_lambda->get_passive();
 
         // Eval elements using plain double type
         Eigen::VectorX<PassiveT> result(n_outputs());
@@ -119,6 +183,9 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
             std::vector<Eigen::Triplet<PassiveT>>& _J_triplets) const override
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
+
+        // Instantiate the first-order evaluation function
+        auto eval_element_active_first_order = type_erased_lambda->get_active_first_order();
 
         // Eval elements using active scalar type (first order)
         std::vector<ActiveFirstOrderElementType> elements(element_handles.size());
@@ -182,6 +249,9 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
                 std::vector<std::vector<Eigen::Triplet<PassiveT>>>& _H_triplets) const override
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
+
+        // Instantiate the second-order evaluation function
+        auto eval_element_active_second_order = type_erased_lambda->get_active_second_order();
 
         // Eval elements using active scalar type (second order)
         std::vector<ActiveSecondOrderElementType> elements(element_handles.size());
@@ -258,6 +328,9 @@ struct VectorObjectiveTerm : VectorObjectiveTermBase<PassiveT>
     {
         TINYAD_ASSERT_EQ(_x.size(), n_vars_global);
 
+        // Instantiate the passive evaluation function
+        auto eval_element_passive = type_erased_lambda->get_passive();
+
         // Eval elements using plain double type
         Eigen::VectorX<PassiveT> squared_element_results(element_handles.size());
 
@@ -288,10 +361,9 @@ private:
     const std::vector<ElementHandleT> element_handles;
     const EvalSettings& settings;
 
-    // Instantiations of user-provided lambda
-    PassiveEvalElementFunction eval_element_passive;
-    ActiveFirstOrderEvalElementFunction eval_element_active_first_order;
-    ActiveSecondOrderEvalElementFunction eval_element_active_second_order;
+    // Store the user-provided lambda function
+    // without instantiating it with a specific scalar type yet.
+    std::unique_ptr<LambdaBase> type_erased_lambda;
 };
 
 }
