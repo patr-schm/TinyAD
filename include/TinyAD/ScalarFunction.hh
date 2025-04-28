@@ -155,6 +155,8 @@ struct ScalarFunction
     /**
      * Evaluate function with gradient and Hessian.
      * The returned Hessian matrix is positive-definite (via per-element projection).
+     * If _projection_eps is nonnegative: Eigenvalues are clamped to this value.
+     * If _projection_eps is negative: Negative eigenvalues are replaced by their absolute value.
      */
     void eval_with_hessian_proj(
             const Eigen::VectorX<PassiveT>& _x,
@@ -166,6 +168,8 @@ struct ScalarFunction
     /**
      * Evaluate function with gradient and Hessian.
      * The returned Hessian matrix is positive-definite (via per-element projection).
+     * If _projection_eps is nonnegative: Eigenvalues are clamped to this value.
+     * If _projection_eps is negative: Negative eigenvalues are replaced by their absolute value.
      */
     std::tuple<PassiveT, Eigen::VectorX<PassiveT>, Eigen::SparseMatrix<PassiveT>>
     eval_with_hessian_proj(
