@@ -11,6 +11,8 @@
 namespace TinyAD
 {
 
+// Eigenvalues are clamped to be larger or equal to this value.
+// If negative: Negative eigenvalues are replaced by their absolute value.
 constexpr double default_hessian_projection_eps = 1e-9;
 
 /**
@@ -68,10 +70,23 @@ void project_positive_definite(
         bool all_positive = true;
         for (Eigen::Index i = 0; i < _H.rows(); ++i)
         {
-            if (D(i, i) < _eigenvalue_eps)
+            if (_eigenvalue_eps < 0)
             {
-                D(i, i) = _eigenvalue_eps;
-                all_positive = false;
+                // Use absolute eigenvalue strategy (https://arxiv.org/html/2406.05928v3)
+                if (D(i, i) < 0)
+                {
+                    D(i, i) = -D(i, i);
+                    all_positive = false;
+                }
+            }
+            else
+            {
+                // Use clamping strategy
+                if (D(i, i) < _eigenvalue_eps)
+                {
+                    D(i, i) = _eigenvalue_eps;
+                    all_positive = false;
+                }
             }
         }
 
