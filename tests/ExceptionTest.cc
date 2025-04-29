@@ -8,18 +8,21 @@
 TEST(ExceptionTest, ExceptionTest)
 {
     const int n_elements = 10;
-    bool throw_exception = true;
+    bool throw_exception = false;
 
     using Vector1 = Eigen::Matrix<double, 1, 1>;
     auto func = TinyAD::scalar_function<1>(TinyAD::range(1));
     func.template add_elements<1>(TinyAD::range(n_elements), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element)
     {
+        element.variables(0);
+        
         if (throw_exception)
             throw std::runtime_error("Exception in parallel section");
         else
             return 1.0;
     });
 
+    throw_exception = true;
     bool caught_first_exception = false;
     bool caught_second_exception = false;
 

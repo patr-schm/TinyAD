@@ -10,6 +10,7 @@
 
 #include <TinyAD/Utils/Helpers.hh>
 #include <TinyAD/Support/Common.hh>
+#include <type_traits>
 
 namespace TinyAD
 {
@@ -73,8 +74,10 @@ add_elements(
     // E.g. you could create a range of integers via TinyAD::range(n).
     using ElementHandle = typename std::decay_t<decltype(*_element_range.begin())>;
 
-    // Assertion fails with Polymesh because polymesh::end_iterator has no operator*
-    // static_assert (std::is_same_v<ElementHandle, typename std::decay_t<decltype(*_element_range.end())>>, "Please supply a valid range (with begin() and end()) as _element_range");
+    static_assert(std::is_same_v<decltype(std::declval<ElementHandle>() == std::declval<ElementHandle>()), bool>,
+        "ElementHandle must have a == operator.");
+
+    // TINYAD_DEBUG_OUT("Static version: Adding " << count(_element_range) << " elements of valence " << element_valence << ".");
 
     // Copy handles into vector
     std::vector<ElementHandle> element_handles;
@@ -84,16 +87,130 @@ add_elements(
 
     // Store objective term
     using ObjectiveType = ScalarObjectiveTerm<
-                variable_dimension,
-                element_valence,
-                PassiveT,
-                VariableHandleT,
-                ElementHandle>;
+            variable_dimension,
+            element_valence,
+            PassiveT,
+            VariableHandleT,
+            ElementHandle>;
 
     objective_terms.push_back(std::make_unique<ObjectiveType>(
-                element_handles, _eval_element, n_vars, settings));
+            element_handles, _eval_element, n_vars, settings));
 
     n_elements += element_handles.size();
+}
+
+namespace
+{
+
+// Helper struct to record how many variable handles are accessed in the _eval_element lambda
+template <int variable_dimension, typename PassiveT, typename VariableHandleT, typename ElementHandleT>
+struct RecorderElement
+{
+    using ScalarType = PassiveT;
+    static constexpr bool active_mode = false;
+    ElementHandleT handle;
+    std::vector<VariableHandleT> accessed;
+
+    RecorderElement(const ElementHandleT& _handle) : handle(_handle) {}
+
+    // The user calls this function to access variables, and we record which ones
+    Eigen::Matrix<PassiveT, variable_dimension, 1> variables(const VariableHandleT& vh)
+    {
+        if (std::find(accessed.begin(), accessed.end(), vh) == std::end(accessed))
+            accessed.push_back(vh);
+        return Eigen::Matrix<PassiveT, variable_dimension, 1>::Zero();
+    }
+
+    // Dummy implementations for other functions functions that might be called by the user.
+    // See Element.hh for an exhaustive list.
+    PassiveT variable(const VariableHandleT& _vh) { return variables(_vh)[0]; }
+    Eigen::Matrix<PassiveT, variable_dimension, 1> variables_passive(const VariableHandleT& _vh) { return Eigen::Matrix<PassiveT, variable_dimension, 1>::Zero(); }
+    PassiveT variable_passive(const VariableHandleT& _vh) { return variables_passive(_vh)[0]; }
+};
+
+}
+
+// Multiple valence version
+template <int variable_dimension, typename PassiveT, typename VariableHandleT>
+template <int... ElementValences, typename ElementHandleRangeT, typename EvalElementFunction>
+void
+ScalarFunction<variable_dimension, PassiveT, VariableHandleT>::
+add_elements_dynamic(
+        const ElementHandleRangeT& _element_range,
+        EvalElementFunction _eval_element)
+{
+    static_assert(sizeof...(ElementValences) >= 1, "At least one element valence has to be passed.");
+    static_assert((std::conjunction_v<std::bool_constant<(ElementValences >= 0)>...>), "Element valences need to be non-negative.");
+
+    // If this line does not compile: Make sure to pass a range with .begin() and .end() methods
+    // E.g. you could create a range of integers via TinyAD::range(n).
+    using ElementHandle = typename std::decay_t<decltype(*_element_range.begin())>;
+
+    static_assert(std::is_same_v<decltype(std::declval<ElementHandle>() == std::declval<ElementHandle>()), bool>,
+        "ElementHandle must have a == operator.");
+
+    // The plan here is to group elements by number of accessed variable handles (element valence)
+    // and call add_elements<valence>(..) for each group.
+    // This means that for each valence, the user lambda is instantiated separately.
+
+    // Collect static valences into a sorted vector
+    std::vector<int> static_valences_sorted = {ElementValences...};
+    std::sort(static_valences_sorted.begin(), static_valences_sorted.end());
+
+    // Assert that the valences are unique
+    auto it = std::unique(static_valences_sorted.begin(), static_valences_sorted.end());
+    if (it != static_valences_sorted.end())
+        TINYAD_ERROR_throw("Element valences passed to add_elements<..>(..) are not unique. Please pass unique element valences.");
+
+    // Group element handles by the exact or next larger static valence
+    std::unordered_map<int, std::vector<ElementHandle>> groups;
+    for (const ElementHandle& e : _element_range)
+    {
+        // Call the user function to record accessed variable handles
+        RecorderElement<variable_dimension, PassiveT, VariableHandleT, ElementHandle> rec(e);
+        _eval_element(rec);
+        const int element_valence = (int)rec.accessed.size();
+
+        // Find the exact or next larger static valence
+        auto it = std::lower_bound(static_valences_sorted.begin(), static_valences_sorted.end(), element_valence);
+        if (it == static_valences_sorted.end())
+        {
+            TINYAD_ERROR_throw("Element valence " << std::to_string(element_valence)
+                << " Exceeds maximum static valence passed to add_elements<..>(..)."
+                << " Please pass a large-enough static valence as template argument.");
+        }
+
+        // Use the found static valence as the group key
+        groups[*it].push_back(e);
+    }
+
+    // Use fold expression to statically iterate over valences
+    // and add an objective term for each one.
+    // This instantiates the user lambda separately for each valence.
+    (void)std::initializer_list<int>{([&]()
+    {
+        auto it = groups.find(ElementValences);
+        if (it != groups.end())
+        {
+            constexpr int element_valence = ElementValences;
+            const std::vector<ElementHandle>& element_handles = it->second;
+
+            // TINYAD_DEBUG_OUT("Dynamic version: Adding " << element_handles.size() << " elements of valence " << element_valence << ".");
+
+            // Store objective term
+            using ObjectiveType = ScalarObjectiveTerm<
+                    variable_dimension,
+                    element_valence,
+                    PassiveT,
+                    VariableHandleT,
+                    ElementHandle>;
+
+            objective_terms.push_back(std::make_unique<ObjectiveType>(
+                    element_handles, _eval_element, n_vars, settings));
+
+            n_elements += element_handles.size();
+        }
+    }(), 0)...};
 }
 
 template <int variable_dimension, typename PassiveT, typename VariableHandleT>
@@ -306,6 +423,10 @@ auto scalar_function(
     // If this line does not compile: Make sure to pass a range with .begin() and .end() methods.
     // E.g. you could create a range of integers via TinyAD::range(n).
     using VariableHandle = typename std::decay_t<decltype(*_variable_range.begin())>;
+
+    // Assert that VariableHandle has a == operator
+    static_assert(std::is_same_v<decltype(std::declval<VariableHandle>() == std::declval<VariableHandle>()), bool>,
+        "VariableHandle must have a == operator.");
 
     // Assertion fails with Polymesh because polymesh::end_iterator has no operator*
     // static_assert (std::is_same_v<VariableHandle, typename std::decay_t<decltype(*_variable_range.end())>>, "Please supply a valid range (with begin() and end()) as _variable_range");

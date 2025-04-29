@@ -24,6 +24,8 @@ struct ScalarObjectiveTermBase
 {
     virtual ~ScalarObjectiveTermBase() = default;
 
+    virtual Eigen::Index n_elements() const = 0;
+
     virtual PassiveT eval(
             const Eigen::VectorX<PassiveT>& _x) const = 0;
 
@@ -150,6 +152,11 @@ struct ScalarObjectiveTerm : ScalarObjectiveTermBase<PassiveT>
             type_erased_lambda = std::move(other.type_erased_lambda);
         }
         return *this;
+    }
+
+    Eigen::Index n_elements() const override
+    {
+        return (Eigen::Index)element_handles.size();
     }
 
     PassiveT eval(

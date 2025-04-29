@@ -62,12 +62,48 @@ struct ScalarFunction
      * Add a set of elements (summands in the objective)
      * and a lambda function that evaluates each element.
      * Can be called multiple times to add different terms.
+     *
+     * This is the **static** version, where every element accesses exactly
+     * the same number of variable handles (element_valence). For elements
+     * that need to access different numbers of variables at runtime, use
+     * add_elements_dynamic<...>() instead, which internally maps each element
+     * to the appropriate static implementation for efficiency.
      */
     template <
             int element_valence,          // Number of variable handles accessed per element.
             typename ElementHandleRangeT, // Type of element handles. E.g. int or OpenMesh::Face handle or other. Deduced automatically.
             typename EvalElementFunction> // Type of per-element eval function. Deduced automatically.
     void add_elements(
+            const ElementHandleRangeT& _element_range,
+            EvalElementFunction _eval_element);
+
+    /**
+     * Add a set of elements (summands in the objective)
+     * and a lambda function that evaluates each element.
+     * Can be called multiple times to add different terms.
+     *
+     * This is the **dynamic** version, where each element can access a different number of variable handles at runtime.
+     * The function works by:
+     * 1. Analyzing each element to determine how many variable handles it accesses
+     * 2. Grouping elements by their valence (number of accessed variables)
+     * 3. Mapping each group to the appropriate static implementation
+     *
+     * To maintain compile-time optimizations, a list of supported valences has to be provided as template arguments
+     * (e.g., add_elements_dynamic<5, 6, 7, 16>(...)), representing the valences you expect to encounter.
+     * Each element will be mapped to the exact or next higher static valence in this list.
+     * A runtime valence may never exceed the maximum provided static valence!
+     * 
+     * Example: With template arguments <6, 8, 10>, elements accessing 5 variables will use the valence-6
+     * implementation, elements accessing 7 variables will use valence-8, etc.
+     
+     * Warning: This mapping is built once, when add_elements_dynamic() is called.
+     * The number of requested variables per element may not depend on run time branching!
+     */
+    template <
+            int... ElementValences,       // List of common element valences. E.g. 5, 6, 7, 16 for meshes with max valence 16.
+            typename ElementHandleRangeT, // Type of element handles. E.g. int or OpenMesh::Face handle or other. Deduced automatically.
+            typename EvalElementFunction> // Type of per-element eval function. Deduced automatically.
+    void add_elements_dynamic(
             const ElementHandleRangeT& _element_range,
             EvalElementFunction _eval_element);
 
