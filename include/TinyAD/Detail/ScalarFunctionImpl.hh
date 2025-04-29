@@ -60,20 +60,17 @@ ScalarFunction(
     TINYAD_ASSERT_G(n_vars, 0);
 }
 
-// Single valence version
 template <int variable_dimension, typename PassiveT, typename VariableHandleT>
-template <int... ElementValences, typename ElementHandleRangeT, typename EvalElementFunction>
-std::enable_if_t<(sizeof...(ElementValences) == 1)>
+template <int element_valence, typename ElementHandleRangeT, typename EvalElementFunction>
+void
 ScalarFunction<variable_dimension, PassiveT, VariableHandleT>::
 add_elements(
         const ElementHandleRangeT& _element_range,
         EvalElementFunction _eval_element)
 {
-    // Since we know that ElementValences is a single value, we can use the first one.
-    constexpr int element_valence = (ElementValences, ...);
-    static_assert(element_valence >= 0, "Element valence needs to be non-negative.");
+    static_assert (element_valence >= 0, "Element valence needs to be non-negative.");
 
-    // If this line does not compile: Make sure to pass a range with .begin() and .end() methods
+    // If this line does not compile: Make sure to pass a range with .begin() and .end() methods.
     // E.g. you could create a range of integers via TinyAD::range(n).
     using ElementHandle = typename std::decay_t<decltype(*_element_range.begin())>;
 
@@ -136,13 +133,13 @@ struct RecorderElement
 // Multiple valence version
 template <int variable_dimension, typename PassiveT, typename VariableHandleT>
 template <int... ElementValences, typename ElementHandleRangeT, typename EvalElementFunction>
-std::enable_if_t<(sizeof...(ElementValences) >= 2)>
+void
 ScalarFunction<variable_dimension, PassiveT, VariableHandleT>::
-add_elements(
+add_elements_dynamic(
         const ElementHandleRangeT& _element_range,
         EvalElementFunction _eval_element)
 {
-    static_assert(sizeof...(ElementValences) >= 2, "At least two element valences have to be passed for this overload.");
+    static_assert(sizeof...(ElementValences) >= 1, "At least one element valence has to be passed.");
     static_assert((std::conjunction_v<std::bool_constant<(ElementValences >= 0)>...>), "Element valences need to be non-negative.");
 
     // If this line does not compile: Make sure to pass a range with .begin() and .end() methods

@@ -11,7 +11,7 @@ TEST(DynamicElementsTest, DynamicElementsTest)
     auto func = TinyAD::scalar_function<2>(TinyAD::range(4));
     
     // Instantiate two element groups with valences 3 and 1
-    func.add_elements<3, 1>(TinyAD::range(4), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element)
+    func.add_elements_dynamic<3, 1>(TinyAD::range(4), [&] (auto& element) -> TINYAD_SCALAR_TYPE(element)
     {
         using T = TINYAD_SCALAR_TYPE(element);
         int e = (int)element.handle;
@@ -115,7 +115,7 @@ TEST(DynamicElementsTest, LaplaceTest)
         // The maxiumum vertex valence in this mesh is 9.
         // Including the vertex itself, this gives a maximum element valence of 10.
         auto func = TinyAD::scalar_function<1>(TinyAD::range(V.rows()));
-        func.add_elements<6, 7, 8, 10>(TinyAD::range(V.rows()), [&] (auto& element)
+        func.add_elements_dynamic<6, 7, 8, 10>(TinyAD::range(V.rows()), [&] (auto& element)
         {
             using T = TINYAD_SCALAR_TYPE(element);
             int v = (int)element.handle;
