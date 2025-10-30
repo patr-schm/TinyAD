@@ -62,7 +62,7 @@ struct Scalar
     Scalar(PassiveT _val)
         : val(_val)
     {
-        static_assert(!dynamic_mode_, "Implicit constructor is only available in static mode. Either choose k at runtime or use make_passive(val, k_dynamic).");
+        
     }
 
     /// Active variable.
@@ -103,26 +103,6 @@ struct Scalar
             res.Hess = HessType::Constant(1, 1, _Hess);
 
         return res;
-    }
-
-    /// Initialize passive variable a.k.a. constant with zero derivatives of size _k_dynamic.
-    /// Only necessary in dynamic mode to pass derivative size at run time.
-    /// In static mode, use the Scalar(val) constructor instead.
-    static Scalar make_passive(PassiveT _val, Eigen::Index _k_dynamic)
-    {
-        if constexpr (!dynamic_mode_)
-            return Scalar(_val);
-        else
-        {
-            Scalar res;
-            res.val = _val;
-            res.grad = GradType::Zero(_k_dynamic);
-
-            if constexpr (with_hessian)
-                res.Hess = HessType::Zero(_k_dynamic, _k_dynamic);
-
-            return res;
-        }
     }
 
     /// Initialize active variable with derivatives of size _k_dynamic.

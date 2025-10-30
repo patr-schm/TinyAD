@@ -152,4 +152,5 @@ TEST(ScalarTestMisc, TriangleDistortionFloat) { test_triangle_distortion<float>(
 TEST(ScalarTestMisc, TriangleDistortionDouble) { test_triangle_distortion<double>(); }
 TEST(ScalarTestMisc, TriangleDistortionLongDouble) { test_triangle_distortion<long double>(); }
 
+// TODO
 //TEST(ScalarTestMisc, TriangleDistortionDoubleDynamic) { test_triangle_distortion<double, true>(); } // Not available, b/c squaredNorm() needs default constructor "Scalar(0)" to be implemented, which is currently not the case in dynamic mode.

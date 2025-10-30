@@ -71,7 +71,7 @@ void test_constructors_dynamic()
         ASSERT_TRUE(a.Hess.isZero());
 
         // Passive variable
-        ADouble b = ADouble::make_passive(5.0, k);
+        ADouble b(5.0);
         ASSERT_EQ(b.val, 5.0);
         ASSERT_TRUE(b.grad.isZero());
         ASSERT_TRUE(b.Hess.isZero());

@@ -13,10 +13,10 @@ void test_isnan_isinf()
 {
     constexpr int dim = dynamic ? Eigen::Dynamic : 1;
     using ADouble = TinyAD::Scalar<dim, PassiveT>;
-    const ADouble a = ADouble::make_passive(0.0, 1);
-    const ADouble b = ADouble::make_passive(INFINITY, 1);
-    const ADouble c = ADouble::make_passive(-INFINITY, 1);
-    const ADouble d = ADouble::make_passive(NAN, 1);
+    const ADouble a(0.0);
+    const ADouble b(INFINITY);
+    const ADouble c(-INFINITY);
+    const ADouble d(NAN);
     ASSERT_EQ(isnan(a), false);
     ASSERT_EQ(isnan(b), false);
     ASSERT_EQ(isnan(c), false);
@@ -161,4 +161,5 @@ TEST(ScalarTestComparison, ClampFloat) { test_clamp<float>(); }
 TEST(ScalarTestComparison, ClampDouble) { test_clamp<double>(); }
 TEST(ScalarTestComparison, ClampLongDouble) { test_clamp<long double>(); }
 
+// TODO
 //TEST(ScalarTestComparison, ClampDoubleDynamic) { test_clamp<double, true>(); } // clamp(TinyAD::Scalar, double) not implemented in for dynamic mode
