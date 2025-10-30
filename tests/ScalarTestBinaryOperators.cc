@@ -194,6 +194,58 @@ TEST(ScalarTestBinaryOperators, PlusLongDoubleSecondOrder) { test_plus<long doub
 TEST(ScalarTestBinaryOperators, PlusDoubleFirstOrderDynamic) { test_plus<double, false, true>(); }
 TEST(ScalarTestBinaryOperators, PlusDoubleSecondOrderDynamic) { test_plus<double, true, true>(); }
 
+// Plus: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_plus_mixing_active_passive_dynamic()
+{
+    // a(x) = x^2 + x + 2 at x=1 (active)
+    // b = 5 (passive constant)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b(5.0);  // 0-dim passive
+    
+    ASSERT_EQ(a.grad.size(), 1);
+    ASSERT_EQ(b.grad.size(), 0);
+
+    const auto f = a + b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 9.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 2.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_plus_mixing_passive_active_dynamic()
+{
+    // a = 5 (passive constant)
+    // b(x) = x^2 + x + 2 at x=1 (active)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a(5.0);  // 0-dim passive
+    ADouble b = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    
+    ASSERT_EQ(a.grad.size(), 0);
+    ASSERT_EQ(b.grad.size(), 1);
+
+    const auto f = a + b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 9.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 2.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, PlusActivePassiveDoubleFirstOrder) { test_plus_mixing_active_passive_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, PlusActivePassiveDoubleSecondOrder) { test_plus_mixing_active_passive_dynamic<double, true>(); }
+TEST(ScalarTestBinaryOperatorsMixing, PlusPassiveActiveDoubleFirstOrder) { test_plus_mixing_passive_active_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, PlusPassiveActiveDoubleSecondOrder) { test_plus_mixing_passive_active_dynamic<double, true>(); }
+
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_minus()
 {
@@ -269,6 +321,52 @@ TEST(ScalarTestBinaryOperators, MinusLongDoubleSecondOrder) { test_minus<long do
 
 TEST(ScalarTestBinaryOperators, MinusDoubleFirstOrderDynamic) { test_minus<double, false, true>(); }
 TEST(ScalarTestBinaryOperators, MinusDoubleSecondOrderDynamic) { test_minus<double, true, true>(); }
+
+// Minus: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_minus_mixing_active_passive_dynamic()
+{
+    // a(x) = x^2 + x + 2 at x=1 (active)
+    // b = 5 (passive constant)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b(5.0);  // 0-dim passive
+
+    const auto f = a - b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, -1.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 3.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 2.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_minus_mixing_passive_active_dynamic()
+{
+    // a = 5 (passive constant)
+    // b(x) = x^2 + x + 2 at x=1 (active)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a(5.0);  // 0-dim passive
+    ADouble b = ADouble::known_derivatives(4.0, 3.0, 2.0);
+
+    const auto f = a - b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 1.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), -3.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), -2.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, MinusActivePassiveDoubleFirstOrder) { test_minus_mixing_active_passive_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MinusActivePassiveDoubleSecondOrder) { test_minus_mixing_active_passive_dynamic<double, true>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MinusPassiveActiveDoubleFirstOrder) { test_minus_mixing_passive_active_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MinusPassiveActiveDoubleSecondOrder) { test_minus_mixing_passive_active_dynamic<double, true>(); }
 
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_mult()
@@ -346,6 +444,52 @@ TEST(ScalarTestBinaryOperators, MultLongDoubleSecondOrder) { test_mult<long doub
 TEST(ScalarTestBinaryOperators, MultDoubleFirstOrderDynamic) { test_mult<double, false, true>(); }
 TEST(ScalarTestBinaryOperators, MultDoubleSecondOrderDynamic) { test_mult<double, true, true>(); }
 
+// Mult: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_mult_mixing_active_passive_dynamic()
+{
+    // a(x) = x^2 + x + 2 at x=1 (active)
+    // b = 2 (passive constant)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b(2.0);  // 0-dim passive
+
+    const auto f = a * b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 8.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 6.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 4.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_mult_mixing_passive_active_dynamic()
+{
+    // a = 2 (passive constant)
+    // b(x) = x^2 + x + 2 at x=1 (active)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a(2.0);  // 0-dim passive
+    ADouble b = ADouble::known_derivatives(4.0, 3.0, 2.0);
+
+    const auto f = a * b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 8.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 6.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 4.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, MultActivePassiveDoubleFirstOrder) { test_mult_mixing_active_passive_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MultActivePassiveDoubleSecondOrder) { test_mult_mixing_active_passive_dynamic<double, true>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MultPassiveActiveDoubleFirstOrder) { test_mult_mixing_passive_active_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, MultPassiveActiveDoubleSecondOrder) { test_mult_mixing_passive_active_dynamic<double, true>(); }
+
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_div()
 {
@@ -421,6 +565,55 @@ TEST(ScalarTestBinaryOperators, DivLongDoubleSecondOrder) { test_div<long double
 
 TEST(ScalarTestBinaryOperators, DivDoubleFirstOrderDynamic) { test_div<double, false, true>(); }
 TEST(ScalarTestBinaryOperators, DivDoubleSecondOrderDynamic) { test_div<double, true, true>(); }
+
+// Div: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_div_mixing_active_passive_dynamic()
+{
+    // a(x) = x^2 + x + 2 at x=1 (active)
+    // b = 2 (passive constant)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a = ADouble::known_derivatives(4.0, 3.0, 2.0);
+    ADouble b(2.0);  // 0-dim passive
+
+    const auto f = a / b;
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 2.0, 1e-12);
+    ASSERT_NEAR(f.grad(0), 1.5, 1e-12);
+    if constexpr (with_hessian)
+    {
+        ASSERT_NEAR(f.Hess(0, 0), 1.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_div_mixing_passive_active_dynamic()
+{
+    // a = 2 (passive constant)
+    // b(x) = x^2 + x + 2 at x=1, so b = 4 (active)
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble a(2.0);  // 0-dim passive
+    ADouble b = ADouble::known_derivatives(4.0, 3.0, 2.0);
+
+    const auto f = a / b;  // 2 / 4 = 0.5
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, 0.5, 1e-12);
+    // d/dx(2/b) = -2 * b' / b^2 = -2 * 3 / 16 = -3/8
+    ASSERT_NEAR(f.grad(0), -3.0/8.0, 1e-12);
+    if constexpr (with_hessian)
+    {
+        // d²/dx²(2/b) = -2 * (b'' * b^2 - 2*b*b'^2) / b^4
+        // = -2 * (2 * 16 - 2 * 4 * 9) / 256 = -2 * (32 - 72) / 256 = 80/256 = 5/16
+        ASSERT_NEAR(f.Hess(0, 0), 5.0/16.0, 1e-12);
+        TINYAD_ASSERT_SYMMETRIC(f.Hess, 1e-12);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, DivActivePassiveDoubleFirstOrder) { test_div_mixing_active_passive_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, DivActivePassiveDoubleSecondOrder) { test_div_mixing_active_passive_dynamic<double, true>(); }
+TEST(ScalarTestBinaryOperatorsMixing, DivPassiveActiveDoubleFirstOrder) { test_div_mixing_passive_active_dynamic<double, false>(); }
+TEST(ScalarTestBinaryOperatorsMixing, DivPassiveActiveDoubleSecondOrder) { test_div_mixing_passive_active_dynamic<double, true>(); }
 
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_atan2_const(const PassiveT _eps)
@@ -586,6 +779,66 @@ TEST(ScalarTestBinaryOperators, Atan2_2LongDoubleSecondOrder) { test_atan2_2<lon
 TEST(ScalarTestBinaryOperators, Atan2_2ConstDoubleFirstOrderDynamic) { test_atan2_2<double, false, true>(1e-12); }
 TEST(ScalarTestBinaryOperators, Atan2_2ConstDoubleSecondOrderDynamic) { test_atan2_2<double, true, true>(1e-12); }
 
+// Atan2: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_atan2_mixing_active_passive_dynamic(const PassiveT _eps)
+{
+    // Active y, passive x
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    const PassiveT x_val = 3.0;
+    const PassiveT y_val = 4.0;
+    
+    ADouble y = ADouble::make_active(y_val, 0, 1);
+    ADouble x(x_val);  // 0-dim passive
+    
+    ASSERT_EQ(y.grad.size(), 1);
+    ASSERT_EQ(x.grad.size(), 0);
+    
+    const auto f = atan2(y, x);
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, std::atan2(y_val, x_val), _eps);
+    // d/dy atan2(y,x) = x / (x^2 + y^2) = 3 / 25
+    ASSERT_NEAR(f.grad(0), x_val / (sqr(x_val) + sqr(y_val)), _eps);
+    
+    if constexpr (with_hessian)
+    {
+        // d²/dy² atan2(y,x) = -2*x*y / (x^2+y^2)^2 = -2*3*4 / 625
+        ASSERT_NEAR(f.Hess(0, 0), -2.0 * x_val * y_val / sqr(sqr(x_val) + sqr(y_val)), _eps);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_atan2_mixing_passive_active_dynamic(const PassiveT _eps)
+{
+    // Passive y, active x
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    const PassiveT x_val = 3.0;
+    const PassiveT y_val = 4.0;
+    
+    ADouble y(y_val);  // 0-dim passive
+    ADouble x = ADouble::make_active(x_val, 0, 1);
+    
+    ASSERT_EQ(y.grad.size(), 0);
+    ASSERT_EQ(x.grad.size(), 1);
+    
+    const auto f = atan2(y, x);
+    ASSERT_EQ(f.grad.size(), 1);
+    ASSERT_NEAR(f.val, std::atan2(y_val, x_val), _eps);
+    // d/dx atan2(y,x) = -y / (x^2 + y^2) = -4 / 25
+    ASSERT_NEAR(f.grad(0), -y_val / (sqr(x_val) + sqr(y_val)), _eps);
+    
+    if constexpr (with_hessian)
+    {
+        // d²/dx² atan2(y,x) = 2*x*y / (x^2+y^2)^2 = 2*3*4 / 625
+        ASSERT_NEAR(f.Hess(0, 0), 2.0 * x_val * y_val / sqr(sqr(x_val) + sqr(y_val)), _eps);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, Atan2ActivePassiveDoubleFirstOrder) { test_atan2_mixing_active_passive_dynamic<double, false>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, Atan2ActivePassiveDoubleSecondOrder) { test_atan2_mixing_active_passive_dynamic<double, true>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, Atan2PassiveActiveDoubleFirstOrder) { test_atan2_mixing_passive_active_dynamic<double, false>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, Atan2PassiveActiveDoubleSecondOrder) { test_atan2_mixing_passive_active_dynamic<double, true>(1e-12); }
+
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_hypot(const PassiveT _eps)
 {
@@ -618,6 +871,60 @@ TEST(ScalarTestBinaryOperators, HypotLongDoubleSecondOrder) { test_hypot<long do
 
 TEST(ScalarTestBinaryOperators, HypotDoubleFirstOrderDynamic) { test_hypot<double, false, true>(1e-12); }
 TEST(ScalarTestBinaryOperators, HypotDoubleSecondOrderDynamic) { test_hypot<double, true, true>(1e-12); }
+
+// Hypot: dynamic mode mixing tests (active with passive Scalar)
+template <typename PassiveT, bool with_hessian>
+void test_hypot_mixing_active_passive_dynamic(const PassiveT _eps)
+{
+    // Active x, passive y
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble x = ADouble::make_active(3.0, 0, 1);
+    ADouble y(4.0);  // 0-dim passive
+    
+    ASSERT_EQ(x.grad.size(), 1);
+    ASSERT_EQ(y.grad.size(), 0);
+    
+    ADouble z = hypot(x, y);
+    ASSERT_EQ(z.grad.size(), 1);
+    ASSERT_NEAR(z.val, 5.0, _eps);
+    // d/dx sqrt(x^2 + y^2) = x / sqrt(x^2+y^2) = 3/5
+    ASSERT_NEAR(z.grad(0), 3.0 / 5.0, _eps);
+
+    if constexpr (with_hessian)
+    {
+        // d²/dx² sqrt(x^2 + y^2) = y^2 / (x^2+y^2)^(3/2) = 16/125
+        ASSERT_NEAR(z.Hess(0, 0), 16.0 / 125.0, _eps);
+    }
+}
+
+template <typename PassiveT, bool with_hessian>
+void test_hypot_mixing_passive_active_dynamic(const PassiveT _eps)
+{
+    // Passive x, active y
+    using ADouble = TinyAD::Scalar<Eigen::Dynamic, PassiveT, with_hessian>;
+    ADouble x(3.0);  // 0-dim passive
+    ADouble y = ADouble::make_active(4.0, 0, 1);
+    
+    ASSERT_EQ(x.grad.size(), 0);
+    ASSERT_EQ(y.grad.size(), 1);
+    
+    ADouble z = hypot(x, y);
+    ASSERT_EQ(z.grad.size(), 1);
+    ASSERT_NEAR(z.val, 5.0, _eps);
+    // d/dy sqrt(x^2 + y^2) = y / sqrt(x^2+y^2) = 4/5
+    ASSERT_NEAR(z.grad(0), 4.0 / 5.0, _eps);
+
+    if constexpr (with_hessian)
+    {
+        // d²/dy² sqrt(x^2 + y^2) = x^2 / (x^2+y^2)^(3/2) = 9/125
+        ASSERT_NEAR(z.Hess(0, 0), 9.0 / 125.0, _eps);
+    }
+}
+
+TEST(ScalarTestBinaryOperatorsMixing, HypotActivePassiveDoubleFirstOrder) { test_hypot_mixing_active_passive_dynamic<double, false>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, HypotActivePassiveDoubleSecondOrder) { test_hypot_mixing_active_passive_dynamic<double, true>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, HypotPassiveActiveDoubleFirstOrder) { test_hypot_mixing_passive_active_dynamic<double, false>(1e-12); }
+TEST(ScalarTestBinaryOperatorsMixing, HypotPassiveActiveDoubleSecondOrder) { test_hypot_mixing_passive_active_dynamic<double, true>(1e-12); }
 
 template <typename PassiveT, bool with_hessian, bool dynamic = false>
 void test_div2d(const PassiveT _eps)
