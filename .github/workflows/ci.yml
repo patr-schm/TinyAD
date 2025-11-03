@@ -57,11 +57,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vs_version: [VS19, VS22]
+        vs_version: [VS22]
         build_type: [Release, Debug]
         include:
-          - vs_version: VS19
-            os: windows-2019
           - vs_version: VS22
             os: windows-2022
     runs-on: ${{ matrix.os }}
