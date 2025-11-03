@@ -80,6 +80,9 @@ struct Scalar
     /// Initialize scalar with known derivatives
     static Scalar known_derivatives(PassiveT _val, const GradType& _grad, const HessType& _Hess)
     {
+        TINYAD_ASSERT_EQ(_grad.size(), _Hess.rows());
+        TINYAD_ASSERT_EQ(_grad.size(), _Hess.cols());
+
         Scalar res;
         res.val = _val;
         res.grad = _grad;
@@ -160,7 +163,7 @@ struct Scalar
     }
 
     // ///////////////////////////////////////////////////////////////////////////
-    // Convenience functions
+    // Helpers
     // ///////////////////////////////////////////////////////////////////////////
 
     /// Compute outer product grad_a * grad_b^T, restricted to a specific block.
@@ -553,6 +556,50 @@ struct Scalar
     }
 
     // ///////////////////////////////////////////////////////////////////////////
+    // Helpers
+    // ///////////////////////////////////////////////////////////////////////////
+
+    // If a has derivative dimension 0, we inflate it to dim.
+    // I.e. we set a.grad to the zero vector and a.Hess to the zero matrix.
+    static void inflate_dim(
+        const Scalar& a,
+        const Eigen::Index dim)
+    {
+        // Resize gradient if necessary
+        if (a.grad.size() != dim)
+        {
+            ASSERT_EQ(a.grad.size(), 0);
+            a.grad = GradType::Zero(dim);
+        }
+
+        // Resize Hessian if necessary
+        if constexpr (with_hessian)
+        {
+            if (a.Hess.rows() != dim || a.Hess.cols() != dim)
+            {
+                ASSERT_EQ(a.Hess.rows(), 0);
+                ASSERT_EQ(a.Hess.cols(), 0);
+                a.Hess = HessType::Zero(dim, dim);
+            }
+        }
+    }
+    
+    // In dynamic mode, Scalars initialized from passive values may have derivative dimension 0.
+    // If a and b have dims (0, k) or (k, 0), we inflate them to (k, k).
+    // If a and b have dims (0, 0) or (k, k), we do nothing.
+    static void inflate_dims(
+        const Scalar& a,
+        const Scalar& b)
+    {
+        static_assert(a.dynamic_mode_ && b.dynamic_mode_, "inflate_dims is only available in dynamic mode.");
+        
+        const Eigen::Index dim = std::max(a.grad.size(), b.grad.size());
+
+        inflate_dim(a, dim);
+        inflate_dim(b, dim);
+    }
+
+    // ///////////////////////////////////////////////////////////////////////////
     // Binary operators
     // ///////////////////////////////////////////////////////////////////////////
 
@@ -563,7 +610,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(a, b);
 
         Scalar res;
         res.val = a.val + b.val;
@@ -610,7 +657,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(this->grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(*this, b);
 
         this->val += b.val;
         this->grad += b.grad;
@@ -640,7 +687,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(a, b);
 
         Scalar res;
         res.val = a.val - b.val;
@@ -691,7 +738,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(*this);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(this->grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(*this, b);
 
         this->val -= b.val;
         this->grad -= b.grad;
@@ -722,7 +769,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(a, b);
 
         Scalar res;
         res.val = a.val * b.val;
@@ -807,7 +854,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(a, b);
 
         Scalar res;
         res.val = a.val / b.val;
@@ -877,7 +924,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(y);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(x);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(y.grad.size(), x.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(y, x);
 
         Scalar res;
         res.val = std::atan2(y.val, x.val);
@@ -905,7 +952,7 @@ struct Scalar
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(a);
         TINYAD_CHECK_FINITE_IF_ENABLED_AD(b);
         if constexpr (TINYAD_ENABLE_OPERATOR_LOGGING) TINYAD_DEBUG_VAR(__FUNCTION__);
-        if constexpr (dynamic_mode_) TINYAD_ASSERT_EQ(a.grad.size(), b.grad.size());
+        if constexpr (dynamic_mode_) inflate_dims(a, b);
 
         return sqrt(a * a + b * b);
     }
@@ -1318,10 +1365,15 @@ struct Scalar
     // Data
     // ///////////////////////////////////////////////////////////////////////////
 
-    PassiveT val = 0.0;                // Scalar value of this (intermediate) variable.
-    GradType grad = GradType::Zero(    // Gradient (first derivative) of val w.r.t. the active variable vector.
+    // Scalar value of this (intermediate) variable.
+    PassiveT val = 0.0;
+
+    // Gradient (first derivative) of val w.r.t. the active variable vector.
+    mutable GradType grad = GradType::Zero(
                 dynamic_mode_ ? 0 : k);
-    HessType Hess = HessType::Zero(    // Hessian (second derivative) of val w.r.t. the active variable vector. Might be restricted to smaller (rectangular) block.
+
+    // Hessian (second derivative) of val w.r.t. the active variable vector. Might be restricted to smaller (rectangular) block.
+    mutable HessType Hess = HessType::Zero(
                 dynamic_mode_ ? 0 : (with_hessian ? hess_rows : 0),
                 dynamic_mode_ ? 0 : (with_hessian ? hess_cols : 0));
 };
