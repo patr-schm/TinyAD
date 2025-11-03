@@ -591,7 +591,7 @@ struct Scalar
         const Scalar& a,
         const Scalar& b)
     {
-        static_assert(a.dynamic_mode_ && b.dynamic_mode_, "inflate_dims is only available in dynamic mode.");
+        static_assert(Scalar::dynamic_mode_, "inflate_dims is only available in dynamic mode.");
         
         const Eigen::Index dim = std::max(a.grad.size(), b.grad.size());
 
