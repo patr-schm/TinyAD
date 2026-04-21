@@ -63,7 +63,26 @@ void project_positive_definite(
             return;
 
         // Compute eigen-decomposition (of symmetric matrix)
+        if (!_H.allFinite())
+        {
+            _H.setIdentity();
+            const PassiveT diag = (_eigenvalue_eps < 0)
+                                      ? static_cast<PassiveT>(1e-9)
+                                      : _eigenvalue_eps;
+            _H *= diag;
+            return;
+        }
+
         Eigen::SelfAdjointEigenSolver<MatT> eig(_H);
+        if (eig.info() != Eigen::Success)
+        {
+            _H.setIdentity();
+            const PassiveT diag = (_eigenvalue_eps < 0)
+                                      ? static_cast<PassiveT>(1e-9)
+                                      : _eigenvalue_eps;
+            _H *= diag;
+            return;
+        }
         MatT D = eig.eigenvalues().asDiagonal();
 
         // Clamp all eigenvalues to eps
