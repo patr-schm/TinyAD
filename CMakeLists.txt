@@ -1,13 +1,15 @@
 # This file is part of TinyAD and released under the MIT license.
 # Author: Patrick Schmidt
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 
 project(TinyAD)
 
 # Set c++ version
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(PROJECT_IS_TOP_LEVEL)
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
 
 # Find Eigen if not already present
 if (NOT TARGET Eigen3::Eigen)
